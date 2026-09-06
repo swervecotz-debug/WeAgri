@@ -439,6 +439,7 @@ window.DICT = {
     createGroup: 'Create group', groupName: 'Group name', create: 'Create', noGroups: 'No groups yet — create one',
     members: 'members', owner: 'owner', openChat: 'Open chat', leave: 'Leave', myGroups: 'Seller Groups', remove: 'Remove',
     sendMoneyTo: 'Withdraw to mobile money', amount: 'Amount', confirm: 'Confirm',
+    topUp: 'Top up', topUpTitle: 'Top up your wallet',
     noMessages: 'No conversations yet', typeMessage: 'Type a message…', send: 'Send',
     searchPlaceholder: 'Search sellers by name…', allTypes: 'All', sellersLabel: 'Sellers',
     noResults: 'No sellers match your search', views: 'views', viewers: 'Viewers',
@@ -486,7 +487,7 @@ window.DICT = {
     qrDesc: 'Wanunuzi wanaskani hii kuona bidhaa zako na wasifu wako', scanQr: 'Skani QR code ya muuzaji',
     logout: 'Toka', cancel: 'Ghairi', loading: 'Inapakia…', buy: 'Nunua sasa', orderPlaced: 'Oda imewekwa!',
     addToFavorites: 'Hifadhi muuzaji', verified: 'Imethibitishwa', trace: 'Wasifu wa muuzaji',
-    viewProfile: 'Ona wasifu', errOccurred: 'Kuna tatizo. Jaribu tena.', aboutUs: 'Kuhusu sisi', termsLink: 'Masharti ya matumizi na Faragha', adCenterLink: 'WeAgri Ad Center', doctor: 'Daktari wa Kilimo', doctorDesc: 'Nashauri afya ya mimea au wanyama', chooseSpecialty: 'Chagua utaalamu wako', plantDoctor: 'Daktari wa Mimea', plantDoctorDesc: 'Mazao, mbegu na afya ya mimea', animalDoctor: 'Daktari wa Wanyama', animalDoctorDesc: 'Mifugo na afya ya wanyama', payProvider: 'Lipa / Tuma pesa', payNow: 'Lipa sasa', paySuccess: 'Malipo yametumwa', paidYou: 'amekulipa', rateProvider: 'Kadiria', consultNote: 'Mshauri wa kilimo — tuma ujumbe, lipia ushauri, au skani QR yake.', sendMoneyTo: 'Toa pesa kwa simu',
+    viewProfile: 'Ona wasifu', errOccurred: 'Kuna tatizo. Jaribu tena.', aboutUs: 'Kuhusu sisi', termsLink: 'Masharti ya matumizi na Faragha', adCenterLink: 'WeAgri Ad Center', doctor: 'Daktari wa Kilimo', doctorDesc: 'Nashauri afya ya mimea au wanyama', chooseSpecialty: 'Chagua utaalamu wako', plantDoctor: 'Daktari wa Mimea', plantDoctorDesc: 'Mazao, mbegu na afya ya mimea', animalDoctor: 'Daktari wa Wanyama', animalDoctorDesc: 'Mifugo na afya ya wanyama', payProvider: 'Lipa / Tuma pesa', payNow: 'Lipa sasa', paySuccess: 'Malipo yametumwa', paidYou: 'amekulipa', rateProvider: 'Kadiria', consultNote: 'Mshauri wa kilimo — tuma ujumbe, lipia ushauri, au skani QR yake.', sendMoneyTo: 'Toa pesa kwa simu', topUp: 'Ongeza pesa', topUpTitle: 'Ongeza pesa kwenye pochi yako',
     settings: 'Mipangilio', account: 'Taarifa za akaunti', usernameLabel: 'Jina la mtumiaji / jina kamili', locationLabel: 'Mahali (mkoa)',
     changePassword: 'Badilisha nenosiri', newPassword: 'Nenosiri jipya (angalau herufi 6)', save: 'Hifadhi mabadiliko', saved: 'Imehifadhiwa',
     appearance: 'Mwonekano', darkMode: 'Hali ya giza', notifications: 'Arifa', notifAllow: 'Ruhusu arifa',
@@ -2060,7 +2061,50 @@ function bindPhoneAutoMethod(inputId, setter) {
 }
 async function doWithdraw() {
   var amt = Number(($('#w_amt') || {}).value); if (!amt) { toast(t('amount')); return }
-  try { await sb.from('transactions').insert({ profile_id: S.profile.id, type: 'withdrawal', amount: amt, method: S._wmethod, status: 'processing' }); closeSheet(); toast(t('saved')); sellerWallet() } catch (e) { showErr(e.message) }
+  try {
+    await sb.from('transactions').insert({ profile_id: S.profile.id, type: 'withdrawal', amount: amt, method: S._wmethod, status: 'processing' })
+    closeSheet(); toast(t('saved'))
+    if (S.profile.role === 'buyer' || S.profile.role === 'doctor') buyerWallet(); else sellerWallet()
+  } catch (e) { showErr(e.message) }
+}
+
+// Buyer top-up: same phone/method/amount pattern as withdraw, but records
+// money moving FROM the buyer's mobile money account INTO their WeAgri
+// wallet (a 'deposit' transaction) instead of out of it.
+function openTopUp() {
+  S._wmethod = methodForPhone(S.profile.phone) || 'M-Pesa'
+  var chips = ['M-Pesa', 'Tigo Pesa', 'Airtel Money'].map(function (m) { return '<button class="chip ' + (S._wmethod === m ? 'selected' : '') + '" data-act="wmethod" data-v="' + m + '">' + m + '</button>' }).join('')
+  var html = '<div class="row-scroll" id="wmethods" style="margin-bottom:14px">' + chips + '</div>' +
+    field(t('payPhone'), '<input class="input" id="w_phone" placeholder="07XX XXX XXX" value="' + esc(S.profile.phone || '') + '">') +
+    '<button class="chip" data-act="use-myphone" style="margin-bottom:14px">' + ic('check', 13) + ' ' + t('useMyNumber') + '</button>' +
+    '<p class="muted" style="font-size:11px;margin-bottom:14px">' + t('autoNetworkNote') + '</p>' +
+    field(t('amount'), '<input class="input" id="w_amt" type="number">') +
+    '<button class="btn btn-primary" data-act="do-topup">' + t('confirm') + '</button>' +
+    '<button class="btn btn-ghost" data-close style="margin-top:8px">' + t('cancel') + '</button>'
+  openSheet(t('topUpTitle'), html, function () { bindPhoneAutoMethod('w_phone', function (m) { S._wmethod = m; refreshChips('wmethods', m) }) })
+}
+async function doTopUp() {
+  var amt = Number(($('#w_amt') || {}).value); if (!amt) { toast(t('amount')); return }
+  try {
+    await sb.from('transactions').insert({ profile_id: S.profile.id, type: 'credit', amount: amt, method: S._wmethod, status: 'processing' })
+    closeSheet(); toast(t('saved')); buyerWallet()
+  } catch (e) { showErr(e.message) }
+}
+async function buyerWallet() {
+  var v = document.getElementById('tabview')
+  v.innerHTML = '<div class="page-pad fade-in"><h2 style="font-size:24px;color:var(--forest);margin-bottom:14px">' + t('wallet') + '</h2><div id="walletbody">' + spinner() + '</div></div>'
+  try {
+    var tr = await sb.from('transactions').select('*').eq('profile_id', S.profile.id).order('created_at', { ascending: false }).limit(30)
+    var txns = tr.data || []
+    var sum = function (list) { return list.reduce(function (s, x) { return s + Number(x.amount || 0) }, 0) }
+    var completed = txns.filter(function (x) { return x.status === 'completed' })
+    var avail = sum(completed.filter(function (x) { return x.type === 'credit' })) - sum(completed.filter(function (x) { return x.type === 'withdrawal' }))
+    var pending = sum(txns.filter(function (x) { return x.status !== 'completed' && x.type === 'credit' }))
+    var _g_walletbody = document.getElementById('walletbody'); if (_g_walletbody) _g_walletbody.innerHTML =
+      '<div class="card" style="padding:22px;border:none;color:#fff;background:linear-gradient(135deg,var(--forest),var(--leaf));margin-bottom:16px"><p style="opacity:.85;font-size:13px">' + t('available') + '</p><div style="font-size:32px;font-weight:800;font-family:var(--display);margin:4px 0 12px">' + money(avail) + '</div><div style="font-size:13px;opacity:.9">' + t('processing') + ': ' + money(pending) + '</div><div style="display:flex;gap:10px;margin-top:14px"><button class="btn btn-maize" style="width:auto;flex:1;padding:12px" data-act="topup">' + ic('plus', 16) + ' ' + t('topUp') + '</button><button class="btn btn-ghost" style="width:auto;flex:1;padding:12px;background:rgba(255,255,255,.15);color:#fff;border-color:rgba(255,255,255,.35)" data-act="withdraw">' + ic('arrowDown', 16) + ' ' + t('withdraw') + '</button></div></div>' +
+      '<h3 style="font-size:16px;margin-bottom:10px">History</h3>' +
+      (txns.length ? txns.map(function (x) { return '<div class="card" style="padding:14px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center"><div><b style="text-transform:capitalize">' + esc(x.type) + '</b><div class="muted" style="font-size:12px">' + esc(x.method || '') + ' · ' + esc(x.status) + '</div></div><b style="color:' + (x.type === 'credit' ? 'var(--leaf)' : 'var(--clay)') + '">' + money(x.amount) + '</b></div>' }).join('') : empty('cash', '—'))
+  } catch (e) { showErr(e.message) }
 }
 
 /* ---------------- [BUYER] ---------------- */
@@ -2078,6 +2122,7 @@ function buyerDash() {
   else if (S.tab === 'orders') buyerOrders()
   else if (S.tab === 'chat') messagesTab()
   else if (S.tab === 'alerts') notificationsTab()
+  else if (S.tab === 'wallet') buyerWallet()
   else if (S.tab === 'profile') buyerProfile()
 }
 
@@ -2304,7 +2349,8 @@ async function loadDiscoverBody() {
 // ── Market kebab menu (⋮ top-right of the buyer Market page) ──────────────
 function wgOpenMarketMenu(el) {
   wgCloseMarketMenu()
-  var html = '<button class="wg-mm-item" data-act="search-history">' + ic('clock', 16) + '<span>' + t('searchHistory') + '</span></button>'
+  var html = '<button class="wg-mm-item" data-act="buyer-wallet">' + ic('wallet', 16) + '<span>' + t('wallet') + '</span></button>' +
+    '<button class="wg-mm-item" data-act="search-history">' + ic('clock', 16) + '<span>' + t('searchHistory') + '</span></button>'
   var backdrop = document.createElement('div'); backdrop.className = 'wg-mm-backdrop'; backdrop.id = 'wg-mktmenu-backdrop'; backdrop.onclick = wgCloseMarketMenu
   var menu = document.createElement('div'); menu.className = 'wg-msgmenu'; menu.id = 'wg-mktmenu'; menu.innerHTML = html
   document.body.appendChild(backdrop); document.body.appendChild(menu)
@@ -3308,10 +3354,13 @@ document.addEventListener('click', function (e) {
     case 'wmethod': S._wmethod = v; Array.prototype.forEach.call(document.querySelectorAll('[data-act="wmethod"]'), function (b) { b.classList.toggle('selected', b === el) }); break
     case 'use-myphone': var wp = document.getElementById('w_phone'); if (wp) { wp.value = S.profile.phone || ''; var m = methodForPhone(wp.value); if (m) { S._wmethod = m; refreshChips('wmethods', m) } } break
     case 'do-withdraw': doWithdraw(); break
+    case 'topup': openTopUp(); break
+    case 'do-topup': doTopUp(); break
     // buyer
     case 'dtype': D.type = v; buyerDiscover(); break
     case 'dcat': D.cat = v; loadDiscoverBody(); break
     case 'market-menu': wgOpenMarketMenu(el); break
+    case 'buyer-wallet': wgCloseMarketMenu(); S.tab = 'wallet'; render(); break
     case 'search-history': wgCloseMarketMenu(); openSearchHistorySheet(); break
     case 'sh-run': closeSheet(); D.query = el.getAttribute('data-q') || ''; buyerDiscover(); break
     case 'sh-del': deleteSearchHistoryItem(el.getAttribute('data-q')); break
