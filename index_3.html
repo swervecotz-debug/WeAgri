@@ -91,7 +91,7 @@ a{color:var(--leaf)}
 .badge{position:absolute;top:8px;left:8px;font-size:10px;font-weight:800;padding:3px 8px;border-radius:999px;display:inline-flex;align-items:center;gap:3px}
 .badge-sponsored{background:rgba(0,0,0,.62);color:#fff;backdrop-filter:blur(4px);text-transform:uppercase;letter-spacing:.03em}
 .badge-near{background:var(--maize);color:var(--forest)}
-.views-pill{position:absolute;bottom:8px;right:8px;background:rgba(0,0,0,.55);color:#fff;font-size:11px;font-weight:700;padding:3px 8px;border-radius:999px;display:flex;align-items:center;gap:4px;backdrop-filter:blur(2px)}
+.wg-insights-link{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:700;color:var(--leaf);text-decoration:underline;text-underline-offset:2px;align-self:flex-start}
 
 /* product card photo box */
 .photo{display:flex;align-items:center;justify-content:center;background:var(--bone-2);position:relative;background-size:cover;background-position:center}
@@ -445,6 +445,7 @@ window.DICT = {
     searchHistory: 'Search history', noSearchHistory: 'No searches yet', clearHistory: 'Clear history',
     mostSuggested: 'Most suggested', suggestions: 'Suggestions',
     productViews: 'Who viewed', noViewers: 'No views yet', totalValue: 'Total value of stock', totalLabel: 'Total',
+    viewInsights: 'View Insights', totalViews: 'Total views', favViewsLabel: 'From buyers who favorited you', otherViewsLabel: 'From other buyers',
     priceHigh: 'Above market price', priceLow: 'Below market price', priceFair: 'In line with the market',
     priceHighMsg: 'Your price is {pct}% above the current market price ({ref}). Buyers may pass — consider lowering it.',
     priceLowMsg: 'Your price is {pct}% below the current market price ({ref}). You could charge more.',
@@ -511,6 +512,7 @@ window.DICT = {
     searchHistory: 'Historia ya utafutaji', noSearchHistory: 'Bado hakuna utafutaji', clearHistory: 'Futa historia',
     mostSuggested: 'Zinazopendekezwa Zaidi', suggestions: 'Mapendekezo',
     productViews: 'Walioangalia', noViewers: 'Bado hakuna aliyetazama', totalValue: 'Thamani ya jumla ya bidhaa',
+    viewInsights: 'Takwimu za Mionekano', totalViews: 'Jumla ya mionekano', favViewsLabel: 'Kutoka kwa wanunuzi waliokupendelea', otherViewsLabel: 'Kutoka kwa wanunuzi wengine',
     totalLabel: 'Jumla', priceHigh: 'Juu ya bei ya soko', priceLow: 'Chini ya bei ya soko',
     priceFair: 'Inalingana na soko',
     priceHighMsg: 'Bei yako iko juu kwa {pct}% kuliko bei ya soko ({ref}). Wanunuzi wanaweza kuruka — punguza kidogo.',
@@ -1169,15 +1171,14 @@ function wgCaptureAvatar() {
 
 function catEmoji(key) { return ic('leaf', 30) }
 
-// Seller's own product card (views + boost)
-function sellerProductCard(p, views) {
+// Seller's own product card (insights + boost)
+function sellerProductCard(p) {
   var boosted = window.H.isBoosted(p)
   var photo = p.photo_url ? "background-image:url('" + esc(p.photo_url) + "')" : ''
   return '<div class="card" style="overflow:hidden;display:flex;flex-direction:column;' + (boosted ? 'border-color:var(--maize);box-shadow:0 0 0 2px rgba(232,176,75,.35)' : '') + '">' +
     '<div class="photo" style="height:96px;font-size:32px;' + photo + '">' + (p.photo_url ? '' : catEmoji(p.category)) +
       (boosted ? '<span class="badge badge-sponsored">' + ic('boost', 11) + '' + t('sponsored') + '</span>' : '') +
       '<button data-act="delpost" data-id="' + p.id + '" title="' + t('delete') + '" style="position:absolute;top:8px;right:8px;background:rgba(0,0,0,.55);color:#fff;border-radius:999px;width:28px;height:28px;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(2px)">' + ic('trash', 14) + '</button>' +
-      '<button class="views-pill" data-act="viewers" data-id="' + p.id + '">' + ic('eye', 12) + ' ' + (views || 0) + '</button>' +
     '</div>' +
     '<div style="padding:12px;display:flex;flex-direction:column;flex:1">' +
       '<div style="font-weight:700;font-size:14px">' + esc(p.title) + '</div>' +
@@ -1185,7 +1186,7 @@ function sellerProductCard(p, views) {
       '<div style="color:var(--clay);font-weight:800;margin-top:4px;font-family:var(--display)">' + money(p.price) + '</div>' +
       (p.created_at ? '<div class="muted" style="font-size:10px;margin-top:2px;display:flex;align-items:center;gap:3px">' + ic('clock',9) + ' ' + _wgExactTime(p.created_at) + '</div>' : '') +
       '<button class="boost-btn" data-act="boost" data-id="' + p.id + '" style="margin-top:10px">' + (boosted ? ic('check', 14) + ' ' + t('boosted') : ic('boost', 14) + ' ' + t('boostPost')) + '</button>' +
-      '<div class="muted" style="font-size:10px;margin-top:3px">' + ic('clock',10) + ' ' + _wgExactTime(p.created_at) + '</div>' +
+      '<button class="wg-insights-link" data-act="insights" data-id="' + p.id + '" style="margin-top:8px">' + ic('eye', 13) + ' ' + t('viewInsights') + '</button>' +
     '</div></div>'
 }
 
@@ -1228,6 +1229,29 @@ async function ticker(containerId) {
     var box = document.getElementById(containerId)
     if (box) box.innerHTML = '<div class="ticker"><div class="ticker-track">' + inner + inner + '</div></div>'
   } catch (e) { /* ticker is non-critical */ }
+}
+
+// Two-slice pie chart: favPct is the green slice (0-100), the rest is muted.
+function polarToXY(cx, cy, r, angleDeg) {
+  var a = (angleDeg - 90) * Math.PI / 180
+  return { x: cx + r * Math.cos(a), y: cy + r * Math.sin(a) }
+}
+function pieSlicePath(cx, cy, r, startAngle, endAngle) {
+  var s = polarToXY(cx, cy, r, endAngle), e = polarToXY(cx, cy, r, startAngle)
+  var largeArc = (endAngle - startAngle) > 180 ? 1 : 0
+  return 'M' + cx + ',' + cy + ' L' + s.x.toFixed(2) + ',' + s.y.toFixed(2) + ' A' + r + ',' + r + ' 0 ' + largeArc + ' 0 ' + e.x.toFixed(2) + ',' + e.y.toFixed(2) + ' Z'
+}
+function insightsPie(favPct) {
+  var size = 200, r = 90, cx = size / 2, cy = size / 2
+  var body
+  if (favPct <= 0) body = '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="var(--line)"/>'
+  else if (favPct >= 100) body = '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="var(--leaf)"/>'
+  else {
+    var favAngle = favPct / 100 * 360
+    body = '<path d="' + pieSlicePath(cx, cy, r, 0, favAngle) + '" fill="var(--leaf)"/>' +
+           '<path d="' + pieSlicePath(cx, cy, r, favAngle, 360) + '" fill="var(--line)"/>'
+  }
+  return '<svg viewBox="0 0 ' + size + ' ' + size + '" width="180" height="180">' + body + '</svg>'
 }
 
 function sparkline(vals) {
@@ -1542,13 +1566,7 @@ async function sellerHome() {
     var products = pr.data || []
     var or = await sb.from('orders').select('*').eq('seller_id', S.profile.id)
     var orders = or.data || []
-    // views per product
-    var ids = products.map(function (p) { return p.id }); var counts = {}
-    if (ids.length) {
-      var vr = await sb.from('product_views').select('product_id').in('product_id', ids)
-      ;(vr.data || []).forEach(function (x) { counts[x.product_id] = (counts[x.product_id] || 0) + 1 })
-    }
-    S._views = counts; S._products = products
+    S._products = products
     var monthSales = orders.filter(function (o) { return o.status === 'completed' }).reduce(function (s, o) { return s + Number(o.total_price || 0) }, 0)
     var pending = orders.filter(function (o) { return o.status === 'pending' }).length
     var _g_stats = document.getElementById('stats'); if (_g_stats) _g_stats.innerHTML =
@@ -1558,7 +1576,7 @@ async function sellerHome() {
       stat((S.profile.rating || '—'), t('ratings'), 'var(--leaf-soft)')
     var totalVal = products.reduce(function (s, p) { return s + Number(p.price || 0) * Number(p.quantity || 0) }, 0)
     var _g_stockval = document.getElementById('stockval'); if (_g_stockval) _g_stockval.innerHTML = products.length ? '<div class="chip" style="margin-bottom:12px;background:var(--leaf-soft);font-weight:700">' + t('totalValue') + ': ' + money(totalVal) + '</div>' : ''
-    var _g_prodgrid = document.getElementById('prodgrid'); if (_g_prodgrid) _g_prodgrid.innerHTML = products.length ? '<div class="grid-2">' + products.map(function (p) { return sellerProductCard(p, counts[p.id]) }).join('') + '</div>' : empty('basket', t('noProducts'))
+    var _g_prodgrid = document.getElementById('prodgrid'); if (_g_prodgrid) _g_prodgrid.innerHTML = products.length ? '<div class="grid-2">' + products.map(function (p) { return sellerProductCard(p) }).join('') + '</div>' : empty('basket', t('noProducts'))
   } catch (e) { showErr(e.message) }
 }
 function stat(v, l, bg, fg) { return '<div class="stat card" style="background:' + bg + ';' + (fg ? 'color:' + fg : '') + '"><div class="v">' + v + '</div><div class="l">' + esc(l) + '</div></div>' }
@@ -1998,14 +2016,28 @@ async function boostPay() {
   } catch (e) { showErr(e.message) }
 }
 
-async function openViewers(productId) {
-  openSheet(t('productViews'), spinner())
+async function openInsights(productId) {
+  openSheet(t('viewInsights'), spinner())
   try {
-    var r = await sb.from('product_views').select('created_at, viewer:profiles!product_views_viewer_id_fkey(full_name,region)').eq('product_id', productId).order('created_at', { ascending: false })
-    var rows = r.data || []
-    setSheetBody(rows.length ? rows.map(function (v) {
-      return '<div class="card" style="padding:12px;display:flex;align-items:center;gap:12px;margin-bottom:8px">' + avatar(v.viewer ? v.viewer.full_name : '', 38) + '<div><div style="font-weight:600;font-size:14px">' + esc(v.viewer ? v.viewer.full_name : '—') + '</div><div class="muted" style="font-size:12px">' + esc(v.viewer ? v.viewer.region : '') + ' · ' + new Date(v.created_at).toLocaleDateString() + '</div></div></div>'
-    }).join('') : empty('eye', t('noViewers')))
+    var vr = await sb.from('product_views').select('viewer_id').eq('product_id', productId)
+    var viewerIds = (vr.data || []).map(function (x) { return x.viewer_id })
+    var total = viewerIds.length
+    if (!total) { setSheetBody(empty('eye', t('noViewers'))); return }
+    var fr = await sb.from('favorites').select('buyer_id').eq('seller_id', S.profile.id).in('buyer_id', viewerIds)
+    var favCount = (fr.data || []).length
+    var otherCount = total - favCount
+    var favPct = Math.round(favCount / total * 100)
+    var otherPct = 100 - favPct
+    var html = '<div style="text-align:center">' +
+        '<div style="display:flex;justify-content:center;margin-bottom:16px">' + insightsPie(favPct) + '</div>' +
+        '<div style="font-size:30px;font-weight:800;font-family:var(--display)">' + total + '</div>' +
+        '<div class="muted" style="font-size:13px;margin-bottom:20px">' + t('totalViews') + '</div>' +
+        '<div style="display:flex;flex-direction:column;gap:12px;text-align:left">' +
+          '<div style="display:flex;align-items:center;gap:10px"><span style="width:12px;height:12px;border-radius:3px;background:var(--leaf);flex-shrink:0"></span><span style="flex:1;font-size:14px">' + t('favViewsLabel') + '</span><b>' + favPct + '% (' + favCount + ')</b></div>' +
+          '<div style="display:flex;align-items:center;gap:10px"><span style="width:12px;height:12px;border-radius:3px;background:var(--line);flex-shrink:0"></span><span style="flex:1;font-size:14px">' + t('otherViewsLabel') + '</span><b>' + otherPct + '% (' + otherCount + ')</b></div>' +
+        '</div>' +
+      '</div>'
+    setSheetBody(html)
   } catch (e) { showErr(e.message) }
 }
 
@@ -3219,7 +3251,7 @@ document.addEventListener('click', function (e) {
     case 'bback': S._boost.step = 0; renderBoost(); break
     case 'bmethod': S._boost.method = v; renderBoost(); break
     case 'bpay': boostPay(); break
-    case 'viewers': openViewers(id); break
+    case 'insights': openInsights(id); break
     // seller groups
     case 'creategroup': openCreateGroup(); break
     case 'do-creategroup': doCreateGroup(); break
