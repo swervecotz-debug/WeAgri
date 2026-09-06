@@ -19,8 +19,10 @@ const CFG = {
   SITE_URL: process.env.SITE_URL || '',
   ADMIN_USERNAME: process.env.ADMIN_USERNAME || '',
   ADMIN_EMAIL: process.env.ADMIN_EMAIL || '',
-  BOOST_TZS: Number(process.env.BOOST_TZS) || 50000,
-  BOOST_USD: Number(process.env.BOOST_USD) || 20,
+  BOOST: {
+    TZS: Number(process.env.BOOST_TZS) || 50000,
+    USD: Number(process.env.BOOST_USD) || 20,
+  },
 };
 
 const app = express();

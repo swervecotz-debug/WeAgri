@@ -1,0 +1,62 @@
+const ICONS: Record<string, string> = {
+  "home": "<path d=\"M3 9.5L12 3l9 6.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z\"/>",
+  "market": "<path d=\"M3 3v18h18\"/><path d=\"M7 14l3-3 3 3 5-6\"/>",
+  "orders": "<path d=\"M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01\"/>",
+  "wallet": "<path d=\"M3 7h16a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z\"/><path d=\"M3 7l2-3h11l2 3\"/><path d=\"M17 13h.01\"/>",
+  "user": "<path d=\"M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2\"/><path d=\"M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z\"/>",
+  "search": "<path d=\"M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16z\"/><path d=\"M21 21l-4.3-4.3\"/>",
+  "camera": "<path d=\"M3 8a2 2 0 0 1 2-2h2l2-2h6l2 2h2a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z\"/><path d=\"M12 17a4 4 0 1 0 0-8 4 4 0 0 0 0 8z\"/>",
+  "truck": "<path d=\"M3 6h11v9H3z\"/><path d=\"M14 9h4l3 3v3h-7z\"/><path d=\"M7 18a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM18 18a2 2 0 1 0 0-4 2 2 0 0 0 0 4z\"/>",
+  "chat": "<path d=\"M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z\"/>",
+  "heart": "<path d=\"M20.8 5.6a5 5 0 0 0-7.1 0L12 7.3l-1.7-1.7a5 5 0 0 0-7.1 7.1L12 21l8.8-8.3a5 5 0 0 0 0-7.1z\"/>",
+  "plus": "<path d=\"M12 5v14M5 12h14\"/>",
+  "eye": "<path d=\"M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z\"/><path d=\"M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z\"/>",
+  "boost": "<path d=\"M13 2L4 14h6l-1 8 9-12h-6z\"/>",
+  "star": "<path d=\"M12 3l2.9 5.9 6.1.9-4.5 4.4 1 6.1L12 17.8 6.5 20.3l1-6.1L3 9.8l6.1-.9z\"/>",
+  "qr": "<path d=\"M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3z\"/><path d=\"M14 14h3v3h-3zM18 18h3v3h-3z\"/>",
+  "bell": "<path d=\"M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9\"/><path d=\"M13.7 21a2 2 0 0 1-3.4 0\"/>",
+  "group": "<path d=\"M17 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2\"/><path d=\"M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z\"/><path d=\"M22 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8\"/>",
+  "check": "<path d=\"M20 6L9 17l-5-5\"/>",
+  "leaf": "<path d=\"M11 20A7 7 0 0 1 4 13C4 7 11 3 20 3c0 9-4 16-9 17z\"/><path d=\"M4 21c2-4 5-7 9-9\"/>",
+  "arrowDown": "<path d=\"M12 5v14M5 12l7 7 7-7\"/>",
+  "send": "<path d=\"M22 2L11 13M22 2l-7 20-4-9-9-4z\"/>",
+  "back": "<path d=\"M19 12H5M12 19l-7-7 7-7\"/>",
+  "settings": "<path d=\"M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6\"/>",
+  "shield": "<path d=\"M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z\"/>",
+  "trash": "<path d=\"M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14\"/>",
+  "reply": "<path d=\"M9 17l-6-6 6-6M3 11h10a6 6 0 0 1 6 6v3\"/>",
+  "forward": "<path d=\"M15 17l6-6-6-6M21 11H11a6 6 0 0 0-6 6v3\"/>",
+  "person": "<path d=\"M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21a8 8 0 0 1 16 0\"/>",
+  "exit": "<path d=\"M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9\"/>",
+  "sun": "<path d=\"M12 17a5 5 0 1 0 0-10 5 5 0 0 0 0 10zM12 1v3M12 20v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M1 12h3M20 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1\"/>",
+  "moon": "<path d=\"M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8z\"/>",
+  "info": "<path d=\"M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 11v5M12 8h.01\"/>",
+  "help": "<path d=\"M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3M12 17h.01\"/>",
+  "x": "<path d=\"M18 6L6 18M6 6l12 12\"/>",
+  "edit": "<path d=\"M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7\"/><path d=\"M18.5 2.5a2.1 2.1 0 0 1 3 3L12 15l-4 1 1-4z\"/>",
+  "lock": "<path d=\"M5 11h14v10H5zM8 11V7a4 4 0 0 1 8 0v4\"/>",
+  "pin": "<path d=\"M12 21s7-5.7 7-11a7 7 0 1 0-14 0c0 5.3 7 11 7 11z\"/><path d=\"M12 12a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z\"/>",
+  "basket": "<path d=\"M5 11h14l-1.5 9H6.5zM9 11l3-7 3 7\"/>",
+  "box": "<path d=\"M21 16V8l-9-5-9 5v8l9 5z\"/><path d=\"M3.3 7L12 12l8.7-5M12 22V12\"/>",
+  "cash": "<path d=\"M2 7h20v10H2z\"/><path d=\"M12 14a2 2 0 1 0 0-4 2 2 0 0 0 0 4z\"/>",
+  "chevron": "<path d=\"M9 6l6 6-6 6\"/>",
+  "seed": "<path d=\"M12 21V9\"/><path d=\"M12 12C9 12 6 10 6 6c4 0 6 2 6 4z\"/><path d=\"M12 10c0-3 2-5 6-5 0 4-2 5-6 5z\"/>",
+  "flask": "<path d=\"M9 3h6M10 3v6l-5 9a2 2 0 0 0 2 3h10a2 2 0 0 0 2-3l-5-9V3\"/>",
+  "animal": "<path d=\"M5 14a2 2 0 1 1 0-4 2 2 0 0 1 0 4zM19 14a2 2 0 1 1 0-4 2 2 0 0 1 0 4zM9 8a2 2 0 1 1 0-4 2 2 0 0 1 0 4zM15 8a2 2 0 1 1 0-4 2 2 0 0 1 0 4zM12 21c3 0 5-2 5-4s-2-3-5-3-5 1-5 3 2 4 5 4z\"/>",
+  "archive": "<path d=\"M4 6h16v4H4z\"/><path d=\"M6 10v9h12v-9\"/><path d=\"M10 14h4\"/>",
+  "copy": "<rect x=\"9\" y=\"9\" width=\"13\" height=\"13\" rx=\"2\"/><path d=\"M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1\"/>",
+  "phone": "<path d=\"M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3 19.5 19.5 0 0 1-6-6 19.8 19.8 0 0 1-3-8.6A2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8.1 9.9a16 16 0 0 0 6 6l1.3-1.2a2 2 0 0 1 2.1-.5c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2z\"/>",
+  "mic": "<path d=\"M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3z\"/><path d=\"M19 10v2a7 7 0 0 1-14 0v-2M12 19v3\"/>",
+  "verified": "<path d=\"M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-2 16l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z\"/>",
+  "swap": "<path d=\"M7 16H3m0 0l4-4m-4 4l4 4M17 8h4m0 0l-4-4m4 4l-4 4\"/>",
+  "moreVert": "<circle cx=\"12\" cy=\"5\" r=\"1.6\" fill=\"currentColor\" stroke=\"none\"/><circle cx=\"12\" cy=\"12\" r=\"1.6\" fill=\"currentColor\" stroke=\"none\"/><circle cx=\"12\" cy=\"19\" r=\"1.6\" fill=\"currentColor\" stroke=\"none\"/>",
+  "clock": "<path d=\"M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18z\"/><path d=\"M12 7v5l3.5 2\"/>"
+};
+
+export function ic(name: string, size?: number): string {
+  const s = size || 20;
+  return '<svg viewBox="0 0 24 24" width="' + s + '" height="' + s + '" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0">' + (ICONS[name] || '') + '</svg>';
+}
+
+// distinct colors for the market chart lines
+export const CHART_COLORS: string[] = ["#1f3d2b","#e8b04b","#c85a3a","#3f7d4f","#7b2ff7","#0a84ff","#d81b60","#00897b"];
