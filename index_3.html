@@ -440,6 +440,7 @@ window.DICT = {
     members: 'members', owner: 'owner', openChat: 'Open chat', leave: 'Leave', myGroups: 'Seller Groups', remove: 'Remove',
     sendMoneyTo: 'Withdraw to mobile money', amount: 'Amount', confirm: 'Confirm',
     topUp: 'Top up', topUpTitle: 'Top up your wallet',
+    insufficientBalance: 'Insufficient wallet balance', insufficientBalanceDesc: 'This order costs {total}, but your wallet only has {avail} available. Top up your wallet to continue.',
     noMessages: 'No conversations yet', typeMessage: 'Type a message…', send: 'Send',
     searchPlaceholder: 'Search sellers by name…', allTypes: 'All', sellersLabel: 'Sellers',
     noResults: 'No sellers match your search', views: 'views', viewers: 'Viewers',
@@ -488,6 +489,7 @@ window.DICT = {
     logout: 'Toka', cancel: 'Ghairi', loading: 'Inapakia…', buy: 'Nunua sasa', orderPlaced: 'Oda imewekwa!',
     addToFavorites: 'Hifadhi muuzaji', verified: 'Imethibitishwa', trace: 'Wasifu wa muuzaji',
     viewProfile: 'Ona wasifu', errOccurred: 'Kuna tatizo. Jaribu tena.', aboutUs: 'Kuhusu sisi', termsLink: 'Masharti ya matumizi na Faragha', adCenterLink: 'WeAgri Ad Center', doctor: 'Daktari wa Kilimo', doctorDesc: 'Nashauri afya ya mimea au wanyama', chooseSpecialty: 'Chagua utaalamu wako', plantDoctor: 'Daktari wa Mimea', plantDoctorDesc: 'Mazao, mbegu na afya ya mimea', animalDoctor: 'Daktari wa Wanyama', animalDoctorDesc: 'Mifugo na afya ya wanyama', payProvider: 'Lipa / Tuma pesa', payNow: 'Lipa sasa', paySuccess: 'Malipo yametumwa', paidYou: 'amekulipa', rateProvider: 'Kadiria', consultNote: 'Mshauri wa kilimo — tuma ujumbe, lipia ushauri, au skani QR yake.', sendMoneyTo: 'Toa pesa kwa simu', topUp: 'Ongeza pesa', topUpTitle: 'Ongeza pesa kwenye pochi yako',
+    insufficientBalance: 'Salio la pochi halitoshi', insufficientBalanceDesc: 'Oda hii inagharimu {total}, lakini pochi yako ina {avail} pekee. Ongeza pesa kwenye pochi yako kuendelea.',
     settings: 'Mipangilio', account: 'Taarifa za akaunti', usernameLabel: 'Jina la mtumiaji / jina kamili', locationLabel: 'Mahali (mkoa)',
     changePassword: 'Badilisha nenosiri', newPassword: 'Nenosiri jipya (angalau herufi 6)', save: 'Hifadhi mabadiliko', saved: 'Imehifadhiwa',
     appearance: 'Mwonekano', darkMode: 'Hali ya giza', notifications: 'Arifa', notifAllow: 'Ruhusu arifa',
@@ -618,6 +620,11 @@ function $(sel, r) { return (r || document).querySelector(sel) }
 function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c] }) }
 function t(k) { var d = window.DICT[S.lang] || window.DICT.en; return d[k] != null ? d[k] : (window.DICT.en[k] != null ? window.DICT.en[k] : k) }
 function money(a) { return window.H.money(a, S.country) }
+// Platform fee: buyers pay the seller's listed price + 3% (per unit, so the
+// total scales normally with quantity). The seller's own listing/withdrawal
+// figures are unaffected — this only marks up what a BUYER sees and pays.
+var PLATFORM_FEE_RATE = 0.03
+function buyerPrice(p) { return Number(p || 0) * (1 + PLATFORM_FEE_RATE) }
 function firstLetter(name) { return ((name || '').trim().charAt(0) || 'U').toUpperCase() }
 
 function toast(msg) {
@@ -1204,7 +1211,7 @@ function buyerProductCard(p) {
     '<div style="padding:12px">' +
       '<div style="font-weight:700;font-size:14px">' + esc(p.title) + '</div>' +
       '<div class="muted" style="font-size:11px">' + ic('pin', 11) + ' ' + esc(p.profiles ? p.profiles.region : p.region) + '</div>' +
-      '<div style="color:var(--clay);font-weight:800;margin-top:4px;font-family:var(--display)">' + money(p.price) + '<span class="muted" style="font-size:11px;font-weight:400">/' + esc(p.unit) + '</span></div>' +
+      '<div style="color:var(--clay);font-weight:800;margin-top:4px;font-family:var(--display)">' + money(buyerPrice(p.price)) + '<span class="muted" style="font-size:11px;font-weight:400">/' + esc(p.unit) + '</span></div>' +
       (p.created_at ? '<div class="muted" style="font-size:10px;margin-top:3px;display:flex;align-items:center;gap:3px">' + ic('clock',9) + ' ' + _wgExactTime(p.created_at) + '</div>' : '') +
     '</div></button>'
 }
@@ -2090,16 +2097,24 @@ async function doTopUp() {
     closeSheet(); toast(t('saved')); buyerWallet()
   } catch (e) { showErr(e.message) }
 }
+// Shared wallet-balance calc — used by the wallet screen itself and by
+// doBuy() to check a buyer can actually afford an order before placing it.
+async function getWalletBalance(profileId) {
+  var tr = await sb.from('transactions').select('*').eq('profile_id', profileId).order('created_at', { ascending: false }).limit(30)
+  var txns = tr.data || []
+  var sum = function (list) { return list.reduce(function (s, x) { return s + Number(x.amount || 0) }, 0) }
+  var completed = txns.filter(function (x) { return x.status === 'completed' })
+  var isOut = function (x) { return x.type === 'withdrawal' || x.type === 'debit' }
+  var avail = sum(completed.filter(function (x) { return x.type === 'credit' })) - sum(completed.filter(isOut))
+  var pending = sum(txns.filter(function (x) { return x.status !== 'completed' && x.type === 'credit' }))
+  return { available: avail, pending: pending, txns: txns }
+}
 async function buyerWallet() {
   var v = document.getElementById('tabview')
   v.innerHTML = '<div class="page-pad fade-in"><h2 style="font-size:24px;color:var(--forest);margin-bottom:14px">' + t('wallet') + '</h2><div id="walletbody">' + spinner() + '</div></div>'
   try {
-    var tr = await sb.from('transactions').select('*').eq('profile_id', S.profile.id).order('created_at', { ascending: false }).limit(30)
-    var txns = tr.data || []
-    var sum = function (list) { return list.reduce(function (s, x) { return s + Number(x.amount || 0) }, 0) }
-    var completed = txns.filter(function (x) { return x.status === 'completed' })
-    var avail = sum(completed.filter(function (x) { return x.type === 'credit' })) - sum(completed.filter(function (x) { return x.type === 'withdrawal' }))
-    var pending = sum(txns.filter(function (x) { return x.status !== 'completed' && x.type === 'credit' }))
+    var w = await getWalletBalance(S.profile.id)
+    var txns = w.txns, avail = w.available, pending = w.pending
     var _g_walletbody = document.getElementById('walletbody'); if (_g_walletbody) _g_walletbody.innerHTML =
       '<div class="card" style="padding:22px;border:none;color:#fff;background:linear-gradient(135deg,var(--forest),var(--leaf));margin-bottom:16px"><p style="opacity:.85;font-size:13px">' + t('available') + '</p><div style="font-size:32px;font-weight:800;font-family:var(--display);margin:4px 0 12px">' + money(avail) + '</div><div style="font-size:13px;opacity:.9">' + t('processing') + ': ' + money(pending) + '</div><div style="display:flex;gap:10px;margin-top:14px"><button class="btn btn-maize" style="width:auto;flex:1;padding:12px" data-act="topup">' + ic('plus', 16) + ' ' + t('topUp') + '</button><button class="btn btn-ghost" style="width:auto;flex:1;padding:12px;background:rgba(255,255,255,.15);color:#fff;border-color:rgba(255,255,255,.35)" data-act="withdraw">' + ic('arrowDown', 16) + ' ' + t('withdraw') + '</button></div></div>' +
       '<h3 style="font-size:16px;margin-bottom:10px">History</h3>' +
@@ -2378,7 +2393,7 @@ async function openMarketSellers(name) {
         avatar(p.profiles ? p.profiles.full_name : '', 44) +
         '<div style="flex:1;min-width:0"><div style="font-weight:700;font-size:14px">' + esc(p.profiles ? p.profiles.full_name : '') + '</div>' +
         '<div class="muted" style="font-size:12px">' + esc(p.title) + ' · ' + ic('pin', 11) + ' ' + esc(p.profiles ? p.profiles.region : p.region) + '</div></div>' +
-        '<span style="color:var(--clay);font-weight:800;font-family:var(--display)">' + money(p.price) + '<span class="muted" style="font-size:11px;font-weight:400">/' + esc(p.unit) + '</span></span>' +
+        '<span style="color:var(--clay);font-weight:800;font-family:var(--display)">' + money(buyerPrice(p.price)) + '<span class="muted" style="font-size:11px;font-weight:400">/' + esc(p.unit) + '</span></span>' +
       '</button>'
     }).join('') : empty('search', t('noResults'))
     setSheetBody(html)
@@ -2425,11 +2440,11 @@ async function openProduct(id) {
 function renderProductSheet() {
   var p = S._cur
   var html = '<div class="photo" style="height:160px;border-radius:16px;font-size:54px;margin-bottom:16px;' + (p.photo_url ? "background-image:url('" + esc(p.photo_url) + "')" : '') + '">' + (p.photo_url ? '' : catEmoji(p.category)) + '</div>' +
-    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><span style="color:var(--clay);font-weight:800;font-size:22px;font-family:var(--display)">' + money(p.price) + '<span class="muted" style="font-size:13px;font-weight:400">/' + esc(p.unit) + '</span></span><span class="chip">' + ic('shield', 13) + ' ' + t('verified') + '</span></div>' +
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><span style="color:var(--clay);font-weight:800;font-size:22px;font-family:var(--display)">' + money(buyerPrice(p.price)) + '<span class="muted" style="font-size:13px;font-weight:400">/' + esc(p.unit) + '</span></span><span class="chip">' + ic('shield', 13) + ' ' + t('verified') + '</span></div>' +
     (p.description ? '<p class="muted" style="font-size:14px;margin-bottom:12px">' + esc(p.description) + '</p>' : '') +
     '<button class="card" data-act="seller" data-id="' + (p.profiles ? p.profiles.id : p.seller_id) + '" style="width:100%;padding:14px;display:flex;align-items:center;gap:12px;margin-bottom:16px;text-align:left">' + avatar(p.profiles ? p.profiles.full_name : '', 40) + '<div style="flex:1"><div style="font-weight:700">' + esc(p.profiles ? p.profiles.full_name : '') + '</div><div class="muted" style="font-size:12px">' + ic('star', 13) + ' ' + ((p.profiles && p.profiles.rating) || t('new')) + ' · ' + esc(p.profiles ? p.profiles.region : '') + '</div></div><span style="color:var(--leaf);font-size:13px;font-weight:700">' + t('viewProfile') + '</span></button>' +
     '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px"><span style="font-weight:600">' + t('quantity') + '</span><div style="display:flex;gap:14px;align-items:center"><button class="chip" data-act="qty" data-d="-1" style="width:36px;height:36px;justify-content:center">−</button><b id="qtyv">1</b><button class="chip selected" data-act="qty" data-d="1" style="width:36px;height:36px;justify-content:center">+</button></div></div>' +
-    '<button class="btn btn-primary" data-act="buy">' + t('buy') + ' · <span id="buytotal">' + money(p.price) + '</span></button>'
+    '<button class="btn btn-primary" data-act="buy">' + t('buy') + ' · <span id="buytotal">' + money(buyerPrice(p.price)) + '</span></button>'
   openSheet(esc(p.title), html)
 }
 // ask the device for the buyer's location (browser shows the permission prompt)
@@ -2453,6 +2468,16 @@ async function reverseGeocode(lat, lng) {
 }
 async function doBuy() {
   var p = S._cur
+  var total = S._qty * buyerPrice(p.price)
+  // wallet-balance gate: the buyer's WeAgri wallet must cover the full
+  // (fee-inclusive) order total before we let the order go through
+  setSheetBody('<div class="center" style="padding:24px">' + spinner() + '</div>')
+  var w
+  try { w = await getWalletBalance(S.profile.id) } catch (e) { showErr(e.message); return }
+  if (w.available < total) {
+    setSheetBody('<div class="center" style="padding:24px">' + ic('wallet', 40) + '<h3 style="margin-top:12px">' + t('insufficientBalance') + '</h3><p class="muted" style="margin:8px 0 20px;font-size:13px">' + t('insufficientBalanceDesc').replace('{total}', money(total)).replace('{avail}', money(w.available)) + '</p><button class="btn btn-primary" data-act="buyer-wallet">' + t('topUp') + '</button><button class="btn btn-ghost" style="margin-top:8px" data-close>' + t('cancel') + '</button></div>')
+    return
+  }
   // show a quick "getting location" note, then ask the device
   setSheetBody('<div class="center" style="padding:24px">' + spinner() + '<p class="muted" style="margin-top:8px">' + t('locating') + '</p></div>')
   var loc = await getLocation()
@@ -2460,11 +2485,13 @@ async function doBuy() {
   if (loc) { locName = (await reverseGeocode(loc.lat, loc.lng)) || (loc.lat.toFixed(4) + ', ' + loc.lng.toFixed(4)) }
   if (!locName) locName = S.profile.region || ''
   try {
-    var base = { buyer_id: S.profile.id, seller_id: p.seller_id, product_id: p.id, quantity: S._qty, total_price: S._qty * Number(p.price), status: 'pending', delivery_status: 'preparing' }
+    var base = { buyer_id: S.profile.id, seller_id: p.seller_id, product_id: p.id, quantity: S._qty, total_price: total, status: 'pending', delivery_status: 'preparing' }
     var withLoc = Object.assign({}, base, { buyer_lat: loc ? loc.lat : null, buyer_lng: loc ? loc.lng : null, buyer_location: locName })
     var ins = await sb.from('orders').insert(withLoc)
     if (ins.error) { ins = await sb.from('orders').insert(base) }  // fallback if location columns not added yet
     if (ins.error) throw ins.error
+    // deduct the order total from the buyer's WeAgri wallet now that the order is placed
+    await sb.from('transactions').insert({ profile_id: S.profile.id, type: 'debit', amount: total, method: 'wallet', status: 'completed' })
     REC.profileLoaded = false // this purchase should shape the feed next time it loads
     // "(name) from (location) has ordered (product) (qty unit)"
     var sentence = S.profile.full_name + (locName ? ' ' + t('fromWord') + ' ' + locName : '') + ' ' + t('orderedMsg') + ' ' + p.title + ' (' + S._qty + ' ' + p.unit + ')'
@@ -2497,7 +2524,7 @@ async function openSeller(id) {
       (isDoctor
         ? '<p class="muted" style="font-size:13px">' + t('consultNote') + '</p>'
         : '<h3 style="font-size:18px;margin-bottom:10px">' + t('myProducts') + '</h3>' +
-          (prods.length ? '<div class="grid-2">' + prods.map(function (p) { return '<div class="card" style="overflow:hidden"><div class="photo" style="height:80px;font-size:28px;' + (p.photo_url ? "background-image:url('" + esc(p.photo_url) + "')" : '') + '">' + (p.photo_url ? '' : catEmoji(p.category)) + '</div><div style="padding:10px"><div style="font-weight:600;font-size:13px">' + esc(p.title) + '</div><div style="color:var(--clay);font-weight:700;font-size:13px">' + money(p.price) + '</div></div></div>' }).join('') + '</div>' : empty('basket', t('noProducts'))))
+          (prods.length ? '<div class="grid-2">' + prods.map(function (p) { return '<div class="card" style="overflow:hidden"><div class="photo" style="height:80px;font-size:28px;' + (p.photo_url ? "background-image:url('" + esc(p.photo_url) + "')" : '') + '">' + (p.photo_url ? '' : catEmoji(p.category)) + '</div><div style="padding:10px"><div style="font-weight:600;font-size:13px">' + esc(p.title) + '</div><div style="color:var(--clay);font-weight:700;font-size:13px">' + money(buyerPrice(p.price)) + '</div></div></div>' }).join('') + '</div>' : empty('basket', t('noProducts'))))
     )
   } catch (e) { showErr(e.message) }
 }
@@ -3372,7 +3399,7 @@ document.addEventListener('click', function (e) {
     case 'qty':
       S._qty = Math.max(1, S._qty + Number(el.getAttribute('data-d')))
       var qv = document.getElementById('qtyv'); if (qv) qv.textContent = S._qty
-      var bt = document.getElementById('buytotal'); if (bt) bt.textContent = money(S._qty * Number(S._cur.price)); break
+      var bt = document.getElementById('buytotal'); if (bt) bt.textContent = money(S._qty * buyerPrice(S._cur.price)); break
     case 'buy': doBuy(); break
     case 'seller': openSeller(id); break
     case 'fav': toggleFav(); break
