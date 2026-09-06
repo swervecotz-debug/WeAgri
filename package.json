@@ -4,6 +4,9 @@
   "private": true,
   "description": "WeAgri agricultural marketplace",
   "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "dev": "concurrently -k -n server,client \"tsx watch server/index.ts\" \"node esbuild.config.mjs --watch\"",
     "typecheck": "tsc --noEmit -p tsconfig.server.json && tsc --noEmit -p tsconfig.client.json",

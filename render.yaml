@@ -1,0 +1,29 @@
+# Render Blueprint — connect this repo at https://dashboard.render.com/blueprints
+# and Render will auto-deploy on every push to main. Env vars marked
+# `sync: false` are prompted for in the Render dashboard on first deploy
+# (or under the service's Environment tab) rather than stored here.
+services:
+  - type: web
+    name: weagri
+    runtime: node
+    plan: free
+    branch: main
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_VERSION
+        value: 20.18.0
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: SITE_URL
+        sync: false
+      - key: ADMIN_USERNAME
+        sync: false
+      - key: ADMIN_EMAIL
+        sync: false
+      - key: BOOST_TZS
+        value: '50000'
+      - key: BOOST_USD
+        value: '20'
