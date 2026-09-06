@@ -441,6 +441,13 @@ window.DICT = {
     sendMoneyTo: 'Withdraw to mobile money', amount: 'Amount', confirm: 'Confirm',
     topUp: 'Top up', topUpTitle: 'Top up your wallet',
     insufficientBalance: 'Insufficient wallet balance', insufficientBalanceDesc: 'This order costs {total}, but your wallet only has {avail} available. Top up your wallet to continue.',
+    makeOffer: 'Make an Offer', listedPrice: 'Listed price', yourOfferPerUnit: 'Your offer (per {unit})',
+    yourTotal: 'Your total', vsListedSave: 'vs. {listed} at the listed price · you save {save}', enterOfferPrompt: 'Enter your offer above',
+    offerNote: 'Add a note for the seller (optional)', offerNotePlaceholder: 'e.g. I can pick up today before 5pm…',
+    sendOffer: 'Send Offer', offerSent: 'Offer sent!', offerSentDesc: 'The seller will accept or decline it soon.',
+    newOffer: 'New offer', wantsToBuyMsg: 'wants to buy {qty}{unit} of {title} at {price} (was {listed})',
+    accept: 'Accept', decline: 'Decline', offerDeclinedMsg: 'declined your offer — your wallet has been refunded.',
+    orderCancelledMsg: 'cancelled your order — your wallet has been refunded.',
     noMessages: 'No conversations yet', typeMessage: 'Type a message…', send: 'Send',
     searchPlaceholder: 'Search sellers by name…', allTypes: 'All', sellersLabel: 'Sellers',
     noResults: 'No sellers match your search', views: 'views', viewers: 'Viewers',
@@ -490,6 +497,13 @@ window.DICT = {
     addToFavorites: 'Hifadhi muuzaji', verified: 'Imethibitishwa', trace: 'Wasifu wa muuzaji',
     viewProfile: 'Ona wasifu', errOccurred: 'Kuna tatizo. Jaribu tena.', aboutUs: 'Kuhusu sisi', termsLink: 'Masharti ya matumizi na Faragha', adCenterLink: 'WeAgri Ad Center', doctor: 'Daktari wa Kilimo', doctorDesc: 'Nashauri afya ya mimea au wanyama', chooseSpecialty: 'Chagua utaalamu wako', plantDoctor: 'Daktari wa Mimea', plantDoctorDesc: 'Mazao, mbegu na afya ya mimea', animalDoctor: 'Daktari wa Wanyama', animalDoctorDesc: 'Mifugo na afya ya wanyama', payProvider: 'Lipa / Tuma pesa', payNow: 'Lipa sasa', paySuccess: 'Malipo yametumwa', paidYou: 'amekulipa', rateProvider: 'Kadiria', consultNote: 'Mshauri wa kilimo — tuma ujumbe, lipia ushauri, au skani QR yake.', sendMoneyTo: 'Toa pesa kwa simu', topUp: 'Ongeza pesa', topUpTitle: 'Ongeza pesa kwenye pochi yako',
     insufficientBalance: 'Salio la pochi halitoshi', insufficientBalanceDesc: 'Oda hii inagharimu {total}, lakini pochi yako ina {avail} pekee. Ongeza pesa kwenye pochi yako kuendelea.',
+    makeOffer: 'Toa Ofa', listedPrice: 'Bei iliyowekwa', yourOfferPerUnit: 'Ofa yako (kwa {unit})',
+    yourTotal: 'Jumla yako', vsListedSave: 'ikilinganishwa na {listed} ya bei iliyowekwa · unaokoa {save}', enterOfferPrompt: 'Weka ofa yako hapo juu',
+    offerNote: 'Ongeza ujumbe kwa muuzaji (si lazima)', offerNotePlaceholder: 'mfano: Naweza kuchukua leo kabla ya saa 11 jioni…',
+    sendOffer: 'Tuma Ofa', offerSent: 'Ofa imetumwa!', offerSentDesc: 'Muuzaji atakubali au kukataa hivi karibuni.',
+    newOffer: 'Ofa mpya', wantsToBuyMsg: 'anataka kununua {qty}{unit} ya {title} kwa {price} (ilikuwa {listed})',
+    accept: 'Kubali', decline: 'Kataa', offerDeclinedMsg: 'amekataa ofa yako — pesa zako zimerudishwa kwenye pochi.',
+    orderCancelledMsg: 'amesitisha oda yako — pesa zako zimerudishwa kwenye pochi.',
     settings: 'Mipangilio', account: 'Taarifa za akaunti', usernameLabel: 'Jina la mtumiaji / jina kamili', locationLabel: 'Mahali (mkoa)',
     changePassword: 'Badilisha nenosiri', newPassword: 'Nenosiri jipya (angalau herufi 6)', save: 'Hifadhi mabadiliko', saved: 'Imehifadhiwa',
     appearance: 'Mwonekano', darkMode: 'Hali ya giza', notifications: 'Arifa', notifAllow: 'Ruhusu arifa',
@@ -1830,8 +1844,17 @@ async function groupSend() {
 
 async function setOrderStatus(id, status, buyerId) {
   try {
+    // Orders are debited from the buyer's wallet the moment they're placed
+    // (doBuy/doSendOffer) — cancelling should refund that hold. But RLS only
+    // lets a user insert transactions for their OWN profile_id, so the seller
+    // cancelling here cannot credit the buyer directly (confirmed: a
+    // cross-profile insert is rejected with 42501/row-level security). The
+    // refund is reconciled automatically the next time the buyer's own
+    // session checks its balance — see reconcileRefunds(), called from
+    // getWalletBalance().
     await sb.from('orders').update({ status: status, delivery_status: status === 'completed' ? 'awaiting_confirmation' : (status === 'accepted' ? 'in_transit' : 'preparing') }).eq('id', id)
     if (status === 'accepted') notify(buyerId, 'order', S.profile.full_name + ' ' + t('orderReceivedMsg'), '')
+    if (status === 'cancelled') notify(buyerId, 'order', S.profile.full_name + ' ' + t('orderCancelledMsg'), '')
     if (status === 'completed') {
       var o = await sb.from('orders').select('products(title, group_id)').eq('id', id).maybeSingle()
       var prod = o.data && o.data.products
@@ -1850,13 +1873,25 @@ async function sellerOrders() {
   v.innerHTML = '<div class="page-pad fade-in"><h2 style="font-size:24px;color:var(--forest);margin-bottom:14px">' + t('activeOrders') + '</h2>' +
     '<div class="row-scroll" style="margin-bottom:14px">' + ['pending', 'accepted', 'completed'].map(function (s) { return '<button class="chip ' + (S._ofilter === s ? 'selected' : '') + '" data-act="ofilter" data-v="' + s + '">' + t(s) + '</button>' }).join('') + '</div><div id="orderlist">' + spinner() + '</div></div>'
   try {
-    var r = await sb.from('orders').select('*, products(title), buyer:profiles!orders_buyer_id_fkey(full_name, phone)').eq('seller_id', S.profile.id).order('created_at', { ascending: false })
+    var r = await sb.from('orders').select('*, products(title, price, unit), buyer:profiles!orders_buyer_id_fkey(full_name, phone)').eq('seller_id', S.profile.id).order('created_at', { ascending: false })
     var list = (r.data || []).filter(function (o) { return o.status === S._ofilter })
     var _g_orderlist = document.getElementById('orderlist'); if (_g_orderlist) _g_orderlist.innerHTML = list.length ? list.map(function (o) {
+      var buyerName = o.buyer ? o.buyer.full_name : t('buyer')
+      // an "offer" is a pending order whose total doesn't match qty × the
+      // normal listed (buyer) price — see doSendOffer(). No dedicated
+      // column for this exists yet, so it's inferred from the price gap.
+      var listedTotal = o.products ? o.quantity * buyerPrice(o.products.price) : o.total_price
+      var isOffer = o.status === 'pending' && o.products && Math.abs(o.total_price - listedTotal) > 1
+      if (isOffer) {
+        return '<div class="card" style="padding:16px;margin-bottom:10px;border:1.5px solid var(--maize);box-shadow:0 0 0 3px rgba(232,176,75,.18)">' +
+          '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><span style="display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:999px;background:var(--maize);color:var(--forest);font-size:10.5px;font-weight:800;text-transform:uppercase">' + ic('boost', 11) + ' ' + t('newOffer') + '</span><span class="muted" style="font-size:11px">' + _wgExactTime(o.created_at) + '</span></div>' +
+          '<div style="display:flex;gap:12px;margin-bottom:14px">' + avatar(buyerName, 44) + '<div style="font-size:13.5px;line-height:1.5"><b>' + esc(buyerName)+ '</b> ' + t('wantsToBuyMsg').replace('{qty}', o.quantity).replace('{unit}', esc(o.products.unit)).replace('{title}', esc(o.products.title)).replace('{price}', '<b style="color:var(--clay)">' + money(o.total_price) + '</b>').replace('{listed}', '<span style="text-decoration:line-through" class="muted">' + money(listedTotal) + '</span>') + '</div></div>' +
+          '<div style="display:flex;gap:8px"><button class="btn btn-primary" style="padding:10px;flex:1;font-size:13px" data-act="wg-accept-flow" data-id="' + o.id + '" data-buyer="' + o.buyer_id + '">' + t('accept') + '</button><button class="btn btn-ghost" style="padding:10px;flex:1;font-size:13px;color:var(--clay)" data-act="wg-decline-offer" data-id="' + o.id + '" data-buyer="' + o.buyer_id + '">' + t('decline') + '</button></div>' +
+        '</div>'
+      }
       var btns = ''
       if (o.status === 'pending') btns = '<div style="display:flex;gap:8px;margin-top:12px"><button class="btn btn-primary" style="padding:10px" data-act="wg-accept-flow" data-id="' + o.id + '" data-buyer="' + o.buyer_id + '">' + t('accepted') + '</button><button class="btn btn-ghost" style="padding:10px" data-act="ostatus" data-id="' + o.id + '" data-v="cancelled" data-buyer="' + o.buyer_id + '">' + t('cancel') + '</button></div>'
       else if (o.status === 'accepted') btns = '<div style="display:flex;gap:8px;margin-top:12px">' + (o.tracking_id ? '<button class="btn btn-ghost" style="padding:10px;flex:1;font-size:13px" data-act="wg-view-qr" data-id="' + o.id + '">' + ic('qr',14) + ' QR</button>' : '') + '<button class="btn btn-maize" style="padding:10px;flex:1" data-act="wg-complete-flow" data-id="' + o.id + '" data-buyer="' + o.buyer_id + '">' + t('completed') + '</button></div>'
-      var buyerName = o.buyer ? o.buyer.full_name : t('buyer')
       var locLine = (o.buyer_location || o.buyer_lat) ? '<div class="muted" style="font-size:12px;margin-top:4px">' + ic('pin', 12) + ' ' + esc(o.buyer_location || (Number(o.buyer_lat).toFixed(4) + ', ' + Number(o.buyer_lng).toFixed(4))) + '</div>' : ''
       var locBtn = (o.buyer_lat && o.buyer_lng) ? '<button class="chip" style="margin-top:10px" data-act="buyer-loc" data-lat="' + o.buyer_lat + '" data-lng="' + o.buyer_lng + '" data-name="' + esc(buyerName) + '" data-loc="' + esc(o.buyer_location || '') + '">' + ic('pin', 13) + ' ' + t('viewLocation') + '</button>' : ''
       return '<div class="card" style="padding:16px;margin-bottom:10px"><b>' + esc(o.products ? o.products.title : 'Order') + '</b>' +
@@ -2112,9 +2147,38 @@ async function doTopUp() {
     closeSheet(); toast(t('saved')); buyerWallet()
   } catch (e) { showErr(e.message) }
 }
+// Cancelling an order (setOrderStatus / wgDeclineOffer) can't credit the
+// buyer's wallet directly — Supabase's RLS only allows a user to insert
+// transactions for their OWN profile_id (confirmed empirically: a
+// cross-profile insert is rejected outright). So instead, whenever the
+// buyer's own session checks its balance, it reconciles here: any cancelled
+// order not yet matched by a completed refund credit of the same amount
+// gets refunded now, self-serviced under the buyer's own session. Matching
+// is by (amount, count) rather than an order id, since transactions has no
+// order_id column — two cancelled orders of the same total_price each still
+// get exactly one refund, first-come-first-served.
+async function reconcileRefunds(profileId) {
+  try {
+    var or = await sb.from('orders').select('total_price').eq('buyer_id', profileId).eq('status', 'cancelled')
+    var cancelled = or.data || []
+    if (!cancelled.length) return
+    var tr = await sb.from('transactions').select('amount').eq('profile_id', profileId).eq('type', 'credit').eq('method', 'refund').eq('status', 'completed')
+    var refunds = tr.data || []
+    var cancelCounts = {}, refundCounts = {}
+    cancelled.forEach(function (o) { var k = Number(o.total_price); cancelCounts[k] = (cancelCounts[k] || 0) + 1 })
+    refunds.forEach(function (x) { var k = Number(x.amount); refundCounts[k] = (refundCounts[k] || 0) + 1 })
+    var toInsert = []
+    Object.keys(cancelCounts).forEach(function (k) {
+      var need = cancelCounts[k] - (refundCounts[k] || 0)
+      for (var i = 0; i < need; i++) toInsert.push({ profile_id: profileId, type: 'credit', amount: Number(k), method: 'refund', status: 'completed' })
+    })
+    if (toInsert.length) await sb.from('transactions').insert(toInsert)
+  } catch (e) { /* best-effort — balance just shows pre-refund amount if this fails */ }
+}
 // Shared wallet-balance calc — used by the wallet screen itself and by
 // doBuy() to check a buyer can actually afford an order before placing it.
 async function getWalletBalance(profileId) {
+  await reconcileRefunds(profileId)
   var tr = await sb.from('transactions').select('*').eq('profile_id', profileId).order('created_at', { ascending: false }).limit(30)
   var txns = tr.data || []
   var sum = function (list) { return list.reduce(function (s, x) { return s + Number(x.amount || 0) }, 0) }
@@ -2459,7 +2523,7 @@ function renderProductSheet() {
     (p.description ? '<p class="muted" style="font-size:14px;margin-bottom:12px">' + esc(p.description) + '</p>' : '') +
     '<button class="card" data-act="seller" data-id="' + (p.profiles ? p.profiles.id : p.seller_id) + '" style="width:100%;padding:14px;display:flex;align-items:center;gap:12px;margin-bottom:16px;text-align:left">' + avatar(p.profiles ? p.profiles.full_name : '', 40) + '<div style="flex:1"><div style="font-weight:700">' + esc(p.profiles ? p.profiles.full_name : '') + '</div><div class="muted" style="font-size:12px">' + ic('star', 13) + ' ' + ((p.profiles && p.profiles.rating) || t('new')) + ' · ' + esc(p.profiles ? p.profiles.region : '') + '</div></div><span style="color:var(--leaf);font-size:13px;font-weight:700">' + t('viewProfile') + '</span></button>' +
     '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px"><span style="font-weight:600">' + t('quantity') + '</span><div style="display:flex;gap:14px;align-items:center"><button class="chip" data-act="qty" data-d="-1" style="width:36px;height:36px;justify-content:center">−</button><b id="qtyv">1</b><button class="chip selected" data-act="qty" data-d="1" style="width:36px;height:36px;justify-content:center">+</button></div></div>' +
-    '<button class="btn btn-primary" data-act="buy">' + t('buy') + ' · <span id="buytotal">' + money(buyerPrice(p.price)) + '</span></button>'
+    '<div style="display:flex;gap:10px"><button class="btn btn-ghost" style="flex:1" data-act="make-offer">' + t('makeOffer') + '</button><button class="btn btn-primary" style="flex:1.3" data-act="buy">' + t('buy') + ' · <span id="buytotal">' + money(buyerPrice(p.price)) + '</span></button></div>'
   openSheet(esc(p.title), html)
 }
 // ask the device for the buyer's location (browser shows the permission prompt)
@@ -2514,6 +2578,77 @@ async function doBuy() {
     if (p.group_id) notifyGroup(p.group_id, 'order', t('groupOrderTitle'), sentence)
     setSheetBody('<div class="center" style="padding:24px"><div class="pop" style="font-size:48px">' + ic('check', 44) + '</div><h3 style="margin-top:10px">' + t('orderPlaced') + '</h3>' + (locName ? '<p class="muted" style="margin-top:6px;font-size:13px">' + ic('pin', 13) + ' ' + esc(locName) + '</p>' : '') + '</div>')
     setTimeout(closeSheet, 1700)
+  } catch (e) { showErr(e.message) }
+}
+
+// ── Make an Offer: buyer proposes a lower price; seller can Accept or ──────
+// Decline (see sellerOrders — an "offer" is a pending order whose total_price
+// doesn't match quantity × the listed buyerPrice). Counter-offers aren't
+// supported yet — the orders table's status/delivery_status columns are
+// locked down by database check constraints to the existing values, so a
+// real back-and-forth negotiation needs a small schema addition first.
+function openMakeOffer() {
+  var p = S._cur
+  var listedTotal = S._qty * buyerPrice(p.price)
+  var html = '<div style="display:flex;align-items:center;gap:12px;padding:12px;background:var(--bone-2);border-radius:var(--radius);margin-bottom:20px">' +
+      '<div class="photo" style="width:48px;height:48px;border-radius:12px;flex-shrink:0;font-size:20px;' + (p.photo_url ? "background-image:url('" + esc(p.photo_url) + "')" : '') + '">' + (p.photo_url ? '' : catEmoji(p.category)) + '</div>' +
+      '<div style="flex:1;min-width:0"><div style="font-weight:700;font-size:14px">' + esc(p.title) + '</div><div class="muted" style="font-size:12px">' + esc(p.profiles ? p.profiles.full_name : '') + ' · ' + esc(p.profiles ? p.profiles.region : p.region) + '</div></div>' +
+      '<div style="text-align:right"><div style="font-size:10px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.04em">' + t('listedPrice') + '</div><div style="font-size:13px;font-weight:700;color:var(--ink-soft);text-decoration:line-through">' + money(buyerPrice(p.price)) + '/' + esc(p.unit) + '</div></div>' +
+    '</div>' +
+    field(t('yourOfferPerUnit').replace('{unit}', p.unit), '<input class="input" id="of_price" type="number" placeholder="' + Math.round(buyerPrice(p.price)) + '">') +
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px"><span style="font-weight:600;font-size:14px">' + t('quantity') + '</span><div style="display:flex;gap:14px;align-items:center"><button class="chip" data-act="ofqty" data-d="-1" style="width:34px;height:34px;justify-content:center">−</button><b id="of_qtyv">' + S._qty + '</b><button class="chip selected" data-act="ofqty" data-d="1" style="width:34px;height:34px;justify-content:center">+</button></div></div>' +
+    '<div id="of_totalbox" style="background:var(--leaf-soft);border-radius:var(--radius);padding:16px;margin-bottom:20px">' + offerTotalHtml(0, listedTotal) + '</div>' +
+    field(t('offerNote'), '<textarea class="input" id="of_note" rows="3" style="resize:none" placeholder="' + t('offerNotePlaceholder') + '"></textarea>') +
+    '<button class="btn btn-primary" data-act="do-offer" style="margin-bottom:10px">' + t('sendOffer') + '</button>' +
+    '<button class="btn btn-ghost" data-close>' + t('cancel') + '</button>'
+  openSheet(t('makeOffer'), html, function () {
+    var input = document.getElementById('of_price')
+    input.addEventListener('input', refreshOfferTotal)
+    input.focus()
+  })
+}
+function offerTotalHtml(perUnit, listedTotal) {
+  var total = perUnit * S._qty
+  var saveLine = perUnit > 0
+    ? t('vsListedSave').replace('{listed}', money(listedTotal)).replace('{save}', money(Math.max(0, listedTotal - total)))
+    : t('enterOfferPrompt')
+  return '<div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font-size:13px;color:var(--forest);font-weight:600">' + t('yourTotal') + '</span><span style="font-size:22px;font-weight:800;font-family:var(--display);color:var(--forest)">' + money(total) + '</span></div>' +
+    '<div style="font-size:12px;color:var(--forest);opacity:.8;margin-top:4px">' + saveLine + '</div>'
+}
+function refreshOfferTotal() {
+  var p = S._cur
+  var perUnit = Number((document.getElementById('of_price') || {}).value) || 0
+  var listedTotal = S._qty * buyerPrice(p.price)
+  var box = document.getElementById('of_totalbox'); if (box) box.innerHTML = offerTotalHtml(perUnit, listedTotal)
+}
+function offerQtyChange(d) {
+  S._qty = Math.max(1, S._qty + d)
+  var qv = document.getElementById('of_qtyv'); if (qv) qv.textContent = S._qty
+  refreshOfferTotal()
+}
+async function doSendOffer() {
+  var p = S._cur
+  var perUnit = Number((document.getElementById('of_price') || {}).value)
+  if (!perUnit || perUnit <= 0) { toast(t('yourOfferPerUnit').replace('{unit}', p.unit)); return }
+  var note = (document.getElementById('of_note') || {}).value || ''
+  var total = perUnit * S._qty
+  setSheetBody('<div class="center" style="padding:24px">' + spinner() + '</div>')
+  var w
+  try { w = await getWalletBalance(S.profile.id) } catch (e) { showErr(e.message); return }
+  if (w.available < total) {
+    setSheetBody('<div class="center" style="padding:24px">' + ic('wallet', 40) + '<h3 style="margin-top:12px">' + t('insufficientBalance') + '</h3><p class="muted" style="margin:8px 0 20px;font-size:13px">' + t('insufficientBalanceDesc').replace('{total}', money(total)).replace('{avail}', money(w.available)) + '</p><button class="btn btn-primary" data-act="buyer-wallet">' + t('topUp') + '</button><button class="btn btn-ghost" style="margin-top:8px" data-close>' + t('cancel') + '</button></div>')
+    return
+  }
+  try {
+    var ins = await sb.from('orders').insert({ buyer_id: S.profile.id, seller_id: p.seller_id, product_id: p.id, quantity: S._qty, total_price: total, status: 'pending', delivery_status: 'preparing' })
+    if (ins.error) throw ins.error
+    // hold the offer amount in the buyer's wallet now — refunded automatically if the seller declines (see wgDeclineOffer)
+    await sb.from('transactions').insert({ profile_id: S.profile.id, type: 'debit', amount: total, method: 'wallet', status: 'completed' })
+    REC.profileLoaded = false
+    var sentence = S.profile.full_name + ' ' + t('wantsToBuyMsg').replace('{qty}', S._qty).replace('{unit}', p.unit).replace('{title}', p.title).replace('{price}', money(total)).replace('{listed}', money(S._qty * buyerPrice(p.price)))
+    notify(p.seller_id, 'order', sentence, note ? ('"' + note + '"') : '')
+    setSheetBody('<div class="center" style="padding:24px"><div class="pop" style="font-size:48px">' + ic('check', 44) + '</div><h3 style="margin-top:10px">' + t('offerSent') + '</h3><p class="muted" style="margin-top:6px;font-size:13px">' + t('offerSentDesc') + '</p></div>')
+    setTimeout(closeSheet, 1900)
   } catch (e) { showErr(e.message) }
 }
 
@@ -3416,6 +3551,9 @@ document.addEventListener('click', function (e) {
       var qv = document.getElementById('qtyv'); if (qv) qv.textContent = S._qty
       var bt = document.getElementById('buytotal'); if (bt) bt.textContent = money(S._qty * buyerPrice(S._cur.price)); break
     case 'buy': doBuy(); break
+    case 'make-offer': openMakeOffer(); break
+    case 'ofqty': offerQtyChange(Number(el.getAttribute('data-d'))); break
+    case 'do-offer': doSendOffer(); break
     case 'seller': openSeller(id); break
     case 'fav': toggleFav(); break
     case 'pay-provider': openProviderPay(id, el.getAttribute('data-name')); break
@@ -3482,6 +3620,7 @@ document.addEventListener('click', function (e) {
     case 'wg-do-complete': wgDoComplete(el.getAttribute('data-oid'), el.getAttribute('data-buyer')); break
     case 'wg-accept-flow': wgAcceptFlow(id, el.getAttribute('data-buyer')); break
     case 'wg-do-accept': wgDoAccept(el.getAttribute('data-oid'), el.getAttribute('data-buyer')); break
+    case 'wg-decline-offer': wgDeclineOffer(id, el.getAttribute('data-buyer')); break
     case 'wg-pwd-confirm': wgBuyerPasswordConfirm(el.getAttribute('data-oid'), el.getAttribute('data-sid')); break
     case 'wg-ni-arch-view': S._notifMode = 'archive'; notificationsTab(); break
     case 'wg-ni-back': S._notifMode = 'list'; notificationsTab(); break
@@ -4463,6 +4602,18 @@ async function wgDoAccept(orderId, buyerId) {
         { order_id: orderId })
     }
   } catch(e) { showErr(e.message) }
+}
+
+// decline an incoming offer: cancel it (the wallet hold placed when the
+// buyer sent the offer is refunded automatically next time their own
+// session checks its balance — see reconcileRefunds()).
+async function wgDeclineOffer(orderId, buyerId) {
+  try {
+    await sb.from('orders').update({ status: 'cancelled' }).eq('id', orderId)
+    notify(buyerId, 'order', S.profile.full_name + ' ' + t('offerDeclinedMsg'), '')
+    toast(t('saved'))
+    sellerOrders()
+  } catch (e) { showErr(e.message) }
 }
 
 // ── wgBuyerDeliverySheet: buyer confirms receipt with password ────────
