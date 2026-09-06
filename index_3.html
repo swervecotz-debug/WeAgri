@@ -625,6 +625,13 @@ function money(a) { return window.H.money(a, S.country) }
 // figures are unaffected — this only marks up what a BUYER sees and pays.
 var PLATFORM_FEE_RATE = 0.03
 function buyerPrice(p) { return Number(p || 0) * (1 + PLATFORM_FEE_RATE) }
+// orders.total_price is the marked-up (buyer-paid) amount — this pulls the
+// embedded 3% fee back out of a sales figure for admin revenue reporting,
+// without needing a separate ledger/RPC: fee = sales - sales/(1+rate).
+function platformRevenueFromSales(salesAmount) {
+  var s = Number(salesAmount || 0)
+  return s - s / (1 + PLATFORM_FEE_RATE)
+}
 function firstLetter(name) { return ((name || '').trim().charAt(0) || 'U').toUpperCase() }
 
 function toast(msg) {
@@ -850,6 +857,7 @@ async function adminOverview() {
       stat(numFmt(d.active_users_24h), 'Active in last 24h', 'var(--maize-soft)') +
       stat(numFmt(d.new_users_7d), 'New users this week', 'var(--bone-2)') +
       stat(money(d.total_sales), 'Total sales made', 'var(--clay)', '#fff') +
+      stat(money(platformRevenueFromSales(d.total_sales)), 'Platform revenue (3% fee)', 'var(--forest)', '#fff') +
       stat(money(d.avg_order_value), 'Avg. order value', 'var(--leaf-soft)') +
       stat(numFmt(d.active_listings), 'Active listings', 'var(--maize-soft)') +
       stat(numFmt(d.total_transactions_count), 'Wallet transactions', 'var(--bone-2)')
@@ -876,6 +884,8 @@ async function adminSales() {
   v.innerHTML = '<div class="page-pad fade-in">' + adminHeader('Sales & transactions', 'Completed orders revenue, grouped over time') +
     '<div class="row-scroll" style="margin-bottom:14px">' + adminGranTabs(ADM.gran) + '</div>' +
     '<div class="card" style="padding:16px" id="sales_chart">' + spinner() + '</div>' +
+    '<h3 style="font-size:16px;margin:20px 0 10px">Platform revenue (3% fee)</h3>' +
+    '<div class="card" style="padding:16px" id="revenue_chart">' + spinner() + '</div>' +
     '<h3 style="font-size:16px;margin:20px 0 10px">Recent wallet transactions</h3>' +
     '<div id="sales_recent" class="card" style="padding:6px 16px">' + spinner() + '</div>' +
     '</div>'
@@ -888,8 +898,13 @@ async function adminSales() {
     })
     var chart = document.getElementById('sales_chart')
     if (chart) chart.innerHTML = '<p class="muted" style="font-size:12px;margin-bottom:10px">Sales revenue (completed orders) — ' + esc(ADM.gran) + '</p>' + adminBarChart(rows, { valueFmt: function (v) { return money(v) } })
+    var revRows = rows.map(function (x) { return { label: x.label, value: platformRevenueFromSales(x.value), orders: x.orders } })
+    var revTotal = revRows.reduce(function (s, x) { return s + x.value }, 0)
+    var rchart = document.getElementById('revenue_chart')
+    if (rchart) rchart.innerHTML = '<p class="muted" style="font-size:12px;margin-bottom:10px">WeAgri’s 3% cut of completed orders — ' + esc(ADM.gran) + ' · total ' + money(revTotal) + '</p>' + adminBarChart(revRows, { valueFmt: function (v) { return money(v) } })
   } catch (e) {
     var c2 = document.getElementById('sales_chart'); if (c2) c2.outerHTML = adminErrBox(e.message)
+    var c3 = document.getElementById('revenue_chart'); if (c3) c3.outerHTML = adminErrBox(e.message)
   }
   try {
     var tr = await sb.rpc('admin_recent_transactions', { p_limit: 15 })
