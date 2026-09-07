@@ -467,6 +467,17 @@ window.DICT = {
     newOffer: 'New offer', wantsToBuyMsg: 'wants to buy {qty}{unit} of {title} at {price} (was {listed})',
     accept: 'Accept', decline: 'Decline', offerDeclinedMsg: 'declined your offer — your wallet has been refunded.',
     orderCancelledMsg: 'cancelled your order — your wallet has been refunded.',
+    deliveryDetails: 'Delivery Details', pickupLocation: 'Pickup Location', dropoffLocation: 'Drop-off Location',
+    region: 'Region', district: 'District (optional)', optional: 'optional',
+    receiverFirstName: "Receiver's First Name", receiverMiddleName: "Receiver's Middle Name", receiverLastName: "Receiver's Last Name",
+    receiverPhone: "Receiver's Phone Number", driverPhone: "Driver's Phone Number",
+    pickupNotAMust: "Not a must to fill — you can leave this for the seller to confirm",
+    completeOrder: 'Complete Order', completeOrderSeller: 'Complete order',
+    fillRequiredFields: 'Please fill all required fields', deliveryFormSentTitle: 'Order sent to seller',
+    deliveryFormSentDesc: 'They will confirm the pickup location and driver next.',
+    sellerConfirmPickup: 'Confirm pickup & driver', buyerFilledDetails: "Buyer's delivery details", buyerSuggested: "Buyer's suggestion",
+    sellerPickupDetails: 'Your pickup details', deliveryConfirmedTitle: 'Delivery confirmed',
+    dropoffLabel: 'Drop-off', receiverLabel: 'Receiver', pickupLabel: 'Pickup', driverLabel: 'Driver',
     noMessages: 'No conversations yet', typeMessage: 'Type a message…', send: 'Send',
     searchPlaceholder: 'Search sellers by name…', allTypes: 'All', sellersLabel: 'Sellers',
     noResults: 'No sellers match your search', views: 'views', viewers: 'Viewers',
@@ -524,6 +535,17 @@ window.DICT = {
     newOffer: 'Ofa mpya', wantsToBuyMsg: 'anataka kununua {qty}{unit} ya {title} kwa {price} (ilikuwa {listed})',
     accept: 'Kubali', decline: 'Kataa', offerDeclinedMsg: 'amekataa ofa yako — pesa zako zimerudishwa kwenye pochi.',
     orderCancelledMsg: 'amesitisha oda yako — pesa zako zimerudishwa kwenye pochi.',
+    deliveryDetails: 'Taarifa za Usafirishaji', pickupLocation: 'Mahali pa Kuchukulia', dropoffLocation: 'Mahali pa Kupeleka',
+    region: 'Mkoa', district: 'Wilaya (si lazima)', optional: 'si lazima',
+    receiverFirstName: 'Jina la Kwanza la Mpokeaji', receiverMiddleName: 'Jina la Kati la Mpokeaji', receiverLastName: 'Jina la Mwisho la Mpokeaji',
+    receiverPhone: 'Namba ya Simu ya Mpokeaji', driverPhone: 'Namba ya Simu ya Dereva',
+    pickupNotAMust: 'Si lazima kujaza — unaweza kumwachia muuzaji athibitishe',
+    completeOrder: 'Kamilisha Oda', completeOrderSeller: 'Kamilisha oda',
+    fillRequiredFields: 'Tafadhali jaza sehemu zote zinazohitajika', deliveryFormSentTitle: 'Oda imetumwa kwa muuzaji',
+    deliveryFormSentDesc: 'Muuzaji atathibitisha mahali pa kuchukulia na dereva baadaye.',
+    sellerConfirmPickup: 'Thibitisha uchukuaji na dereva', buyerFilledDetails: 'Taarifa za mnunuzi', buyerSuggested: 'Pendekezo la mnunuzi',
+    sellerPickupDetails: 'Taarifa zako za uchukuaji', deliveryConfirmedTitle: 'Usafirishaji umethibitishwa',
+    dropoffLabel: 'Kupeleka', receiverLabel: 'Mpokeaji', pickupLabel: 'Kuchukua', driverLabel: 'Dereva',
     settings: 'Mipangilio', account: 'Taarifa za akaunti', usernameLabel: 'Jina la mtumiaji / jina kamili', locationLabel: 'Mahali (mkoa)',
     changePassword: 'Badilisha nenosiri', newPassword: 'Nenosiri jipya (angalau herufi 6)', save: 'Hifadhi mabadiliko', saved: 'Imehifadhiwa',
     appearance: 'Mwonekano', darkMode: 'Hali ya giza', notifications: 'Arifa', notifAllow: 'Ruhusu arifa',
@@ -2584,27 +2606,75 @@ async function doBuy() {
     setSheetBody('<div class="center" style="padding:24px">' + ic('wallet', 40) + '<h3 style="margin-top:12px">' + t('insufficientBalance') + '</h3><p class="muted" style="margin:8px 0 20px;font-size:13px">' + t('insufficientBalanceDesc').replace('{total}', money(total)).replace('{avail}', money(w.available)) + '</p><button class="btn btn-primary" data-act="buyer-wallet">' + t('topUp') + '</button><button class="btn btn-ghost" style="margin-top:8px" data-close>' + t('cancel') + '</button></div>')
     return
   }
-  // show a quick "getting location" note, then ask the device
+  openDeliveryForm()
+}
+
+// ── Delivery details form (buyer side) ──────────────────────────────────
+function regionSelectHtml(id) {
+  return '<select class="select" id="' + id + '"><option value="">—</option>' + (window.REGIONS[S.country] || window.REGIONS.TZ).map(function (r) { return '<option>' + esc(r) + '</option>' }).join('') + '</select>'
+}
+function openDeliveryForm() {
+  var html =
+    '<div style="font-weight:700;font-size:14px;color:var(--forest)">' + t('pickupLocation') + '</div>' +
+    '<p class="muted" style="font-size:11.5px;margin:2px 0 10px">' + t('pickupNotAMust') + '</p>' +
+    field(t('region'), regionSelectHtml('df_pu_region')) +
+    field(t('district'), '<input class="input" id="df_pu_district">') +
+    '<div style="height:6px"></div>' +
+    '<div style="font-weight:700;font-size:14px;color:var(--forest);margin-bottom:8px">' + t('dropoffLocation') + '</div>' +
+    field(t('region'), regionSelectHtml('df_do_region')) +
+    field(t('district'), '<input class="input" id="df_do_district">') +
+    field(t('receiverFirstName'), '<input class="input" id="df_fname">') +
+    field(t('receiverMiddleName'), '<input class="input" id="df_mname">') +
+    field(t('receiverLastName'), '<input class="input" id="df_lname">') +
+    field(t('receiverPhone'), '<input class="input" id="df_rphone" placeholder="+255 7XX XXX XXX">') +
+    field(t('driverPhone') + ' <span class="muted" style="font-weight:400">(' + t('optional') + ')</span>', '<input class="input" id="df_dphone" placeholder="+255 7XX XXX XXX">') +
+    '<button class="btn btn-primary" data-act="do-complete-order" style="margin-top:6px">' + t('completeOrder') + '</button>'
+  openSheet(t('deliveryDetails'), html)
+}
+async function doCompleteBuyerOrder() {
+  var p = S._cur
+  var total = S._qty * buyerPrice(p.price)
+  var fname = (($('#df_fname') || {}).value || '').trim()
+  var mname = (($('#df_mname') || {}).value || '').trim()
+  var lname = (($('#df_lname') || {}).value || '').trim()
+  var rphone = (($('#df_rphone') || {}).value || '').trim()
+  var doRegion = ($('#df_do_region') || {}).value || ''
+  var doDistrict = (($('#df_do_district') || {}).value || '').trim()
+  var puRegion = ($('#df_pu_region') || {}).value || ''
+  var puDistrict = (($('#df_pu_district') || {}).value || '').trim()
+  var dphone = (($('#df_dphone') || {}).value || '').trim()
+  if (!fname || !mname || !lname || !rphone || !doRegion) { toast(t('fillRequiredFields')); return }
+
   setSheetBody('<div class="center" style="padding:24px">' + spinner() + '<p class="muted" style="margin-top:8px">' + t('locating') + '</p></div>')
   var loc = await getLocation()
   var locName = ''
   if (loc) { locName = (await reverseGeocode(loc.lat, loc.lng)) || (loc.lat.toFixed(4) + ', ' + loc.lng.toFixed(4)) }
   if (!locName) locName = S.profile.region || ''
   try {
-    var base = { buyer_id: S.profile.id, seller_id: p.seller_id, product_id: p.id, quantity: S._qty, total_price: total, status: 'pending', delivery_status: 'preparing' }
-    var withLoc = Object.assign({}, base, { buyer_lat: loc ? loc.lat : null, buyer_lng: loc ? loc.lng : null, buyer_location: locName })
-    var ins = await sb.from('orders').insert(withLoc)
-    if (ins.error) { ins = await sb.from('orders').insert(base) }  // fallback if location columns not added yet
+    // graceful degradation: the delivery-detail columns (dropoff/receiver/
+    // pickup) only exist once the matching SQL migration has been run —
+    // fall all the way back to the original minimal insert so checkout
+    // never breaks for buyers in the meantime, it just loses the new fields
+    var minimal = { buyer_id: S.profile.id, seller_id: p.seller_id, product_id: p.id, quantity: S._qty, total_price: total, status: 'pending', delivery_status: 'preparing' }
+    var withDelivery = Object.assign({}, minimal, {
+      dropoff_region: doRegion, dropoff_district: doDistrict || null,
+      receiver_first_name: fname, receiver_middle_name: mname, receiver_last_name: lname, receiver_phone: rphone,
+      buyer_pickup_region: puRegion || null, buyer_pickup_district: puDistrict || null, buyer_driver_phone: dphone || null
+    })
+    var geo = { buyer_lat: loc ? loc.lat : null, buyer_lng: loc ? loc.lng : null, buyer_location: locName }
+    var ins = await sb.from('orders').insert(Object.assign({}, withDelivery, geo))
+    if (ins.error) ins = await sb.from('orders').insert(withDelivery)
+    if (ins.error) ins = await sb.from('orders').insert(Object.assign({}, minimal, geo))
+    if (ins.error) ins = await sb.from('orders').insert(minimal)
     if (ins.error) throw ins.error
     // deduct the order total from the buyer's WeAgri wallet now that the order is placed
     await sb.from('transactions').insert({ profile_id: S.profile.id, type: 'debit', amount: total, method: 'wallet', status: 'completed' })
     REC.profileLoaded = false // this purchase should shape the feed next time it loads
-    // "(name) from (location) has ordered (product) (qty unit)"
-    var sentence = S.profile.full_name + (locName ? ' ' + t('fromWord') + ' ' + locName : '') + ' ' + t('orderedMsg') + ' ' + p.title + ' (' + S._qty + ' ' + p.unit + ')'
+    var sentence = S.profile.full_name + ' ' + t('orderedMsg') + ' ' + p.title + ' (' + S._qty + ' ' + p.unit + ')'
     notify(p.seller_id, 'order', sentence, '')
     if (p.group_id) notifyGroup(p.group_id, 'order', t('groupOrderTitle'), sentence)
-    setSheetBody('<div class="center" style="padding:24px"><div class="pop" style="font-size:48px">' + ic('check', 44) + '</div><h3 style="margin-top:10px">' + t('orderPlaced') + '</h3>' + (locName ? '<p class="muted" style="margin-top:6px;font-size:13px">' + ic('pin', 13) + ' ' + esc(locName) + '</p>' : '') + '</div>')
-    setTimeout(closeSheet, 1700)
+    setSheetBody('<div class="center" style="padding:24px"><div class="pop" style="font-size:48px">' + ic('check', 44) + '</div><h3 style="margin-top:10px">' + t('deliveryFormSentTitle') + '</h3><p class="muted" style="margin-top:6px;font-size:13px">' + t('deliveryFormSentDesc') + '</p></div>')
+    setTimeout(closeSheet, 1900)
   } catch (e) { showErr(e.message) }
 }
 
@@ -3578,6 +3648,7 @@ document.addEventListener('click', function (e) {
       var qv = document.getElementById('qtyv'); if (qv) qv.textContent = S._qty
       var bt = document.getElementById('buytotal'); if (bt) bt.textContent = money(S._qty * buyerPrice(S._cur.price)); break
     case 'buy': doBuy(); break
+    case 'do-complete-order': doCompleteBuyerOrder(); break
     case 'make-offer': openMakeOffer(); break
     case 'ofqty': offerQtyChange(Number(el.getAttribute('data-d'))); break
     case 'do-offer': doSendOffer(); break
@@ -4316,6 +4387,19 @@ async function wgOnQRScanned(trackingId, orderId) {
         '<div class="muted" style="font-size:12px;margin-top:6px">Buyer: <b>' + esc(o.buyer ? o.buyer.full_name : '') + '</b></div>' +
         '<div class="muted" style="font-size:12px">Seller: <b>' + esc(o.seller ? o.seller.full_name : '') + '</b></div>' +
       '</div>'
+    // combined delivery details — filled by the buyer (drop-off + receiver)
+    // and the seller (pickup + driver); visible to anyone who scans this
+    // same QR, exactly like a shared handover manifest.
+    var receiverName = [o.receiver_first_name, o.receiver_middle_name, o.receiver_last_name].filter(Boolean).join(' ')
+    if (o.dropoff_region || o.pickup_region || receiverName || o.driver_phone) {
+      html += '<div class="card" style="padding:14px;margin-bottom:14px">' +
+        '<div style="font-weight:700;font-size:13px;margin-bottom:8px;color:var(--forest)">' + t('deliveryDetails') + '</div>' +
+        (o.pickup_region ? '<div style="font-size:13px;margin-bottom:5px"><b>' + t('pickupLabel') + ':</b> ' + esc(o.pickup_region) + (o.pickup_district ? ', ' + esc(o.pickup_district) : '') + '</div>' : '') +
+        (o.dropoff_region ? '<div style="font-size:13px;margin-bottom:5px"><b>' + t('dropoffLabel') + ':</b> ' + esc(o.dropoff_region) + (o.dropoff_district ? ', ' + esc(o.dropoff_district) : '') + '</div>' : '') +
+        (receiverName ? '<div style="font-size:13px;margin-bottom:5px"><b>' + t('receiverLabel') + ':</b> ' + esc(receiverName) + (o.receiver_phone ? ' · ' + esc(o.receiver_phone) : '') + '</div>' : '') +
+        (o.driver_phone ? '<div style="font-size:13px"><b>' + t('driverLabel') + ':</b> <a href="tel:' + esc(o.driver_phone) + '" style="color:var(--forest);font-weight:700">' + esc(o.driver_phone) + '</a></div>' : '') +
+      '</div>'
+    }
     if (!isBuyer && !isSeller) {
       html += '<div style="background:var(--leaf-soft);border-radius:12px;padding:12px;margin-bottom:12px;font-size:13px">' + ic('truck',14) + ' ' + t('transporterTip') + '</div>'
       if (ds === 'preparing' || ds === 'in_transit' || ds === 'accepted') {
@@ -4601,31 +4685,62 @@ async function wgUpdateBadge() {
 // ── Driver phone flow ─────────────────────────────────────────────────
 
 // ── wgAcceptFlow: seller fills driver phone when accepting order ───────
-function wgAcceptFlow(orderId, buyerId) {
-  openSheet('Accept Order',
-    '<div style="padding:16px">' +
-    '<p class="muted" style="font-size:13px;margin-bottom:16px">Enter the transporter\'s phone number. This will be visible only to you and the buyer.</p>' +
-    '<label style="font-size:13px;font-weight:700;display:block;margin-bottom:6px">Driver / Transporter Phone</label>' +
-    '<input id="wg-acc-ph" type="tel" class="input" placeholder="+255 7xx xxx xxx" style="margin-bottom:6px">' +
-    '<p class="muted" style="font-size:11px;margin-bottom:16px">Only you and the buyer will see this number.</p>' +
-    '<button class="btn btn-primary" data-act="wg-do-accept" data-oid="' + orderId + '" data-buyer="' + buyerId + '">Accept Order</button>' +
-    '</div>'
-  )
+// Shows the buyer's delivery details read-only (they can't be edited here),
+// plus the seller's own pickup-location + driver-phone fields, which are
+// the fields the seller actually owns in this flow (see doCompleteBuyerOrder
+// for the buyer's side — buyer_pickup_*/buyer_driver_phone there are just
+// suggestions; pickup_region/pickup_district/driver_phone here are final).
+async function wgAcceptFlow(orderId, buyerId) {
+  openSheet(t('sellerConfirmPickup'), '<div style="padding:24px;text-align:center">' + spinner() + '</div>')
+  try {
+    var r = await sb.from('orders').select('*').eq('id', orderId).maybeSingle()
+    var o = r.data
+    if (!o) { setSheetBody(empty('box', t('noOrders'))); return }
+    var receiverName = [o.receiver_first_name, o.receiver_middle_name, o.receiver_last_name].filter(Boolean).join(' ')
+    var buyerBlock = ''
+    if (o.dropoff_region || receiverName || o.buyer_pickup_region || o.buyer_driver_phone) {
+      buyerBlock = '<div class="card" style="padding:14px;margin-bottom:16px;background:var(--bone-2);border:none">' +
+        '<div style="font-weight:700;font-size:13px;margin-bottom:8px;color:var(--forest)">' + t('buyerFilledDetails') + '</div>' +
+        (o.dropoff_region ? '<div style="font-size:13px;margin-bottom:4px"><b>' + t('dropoffLabel') + ':</b> ' + esc(o.dropoff_region) + (o.dropoff_district ? ', ' + esc(o.dropoff_district) : '') + '</div>' : '') +
+        (receiverName ? '<div style="font-size:13px;margin-bottom:4px"><b>' + t('receiverLabel') + ':</b> ' + esc(receiverName) + '</div>' : '') +
+        (o.receiver_phone ? '<div style="font-size:13px;margin-bottom:4px"><b>' + t('receiverPhone') + ':</b> ' + esc(o.receiver_phone) + '</div>' : '') +
+        (o.buyer_pickup_region ? '<div style="font-size:12px;margin-top:8px" class="muted">' + t('buyerSuggested') + ' — ' + t('pickupLabel') + ': ' + esc(o.buyer_pickup_region) + (o.buyer_pickup_district ? ', ' + esc(o.buyer_pickup_district) : '') + '</div>' : '') +
+        (o.buyer_driver_phone ? '<div style="font-size:12px" class="muted">' + t('buyerSuggested') + ' — ' + t('driverLabel') + ': ' + esc(o.buyer_driver_phone) + '</div>' : '') +
+      '</div>'
+    }
+    var html = buyerBlock +
+      '<div style="font-weight:700;font-size:14px;color:var(--forest);margin-bottom:8px">' + t('sellerPickupDetails') + '</div>' +
+      field(t('region'), regionSelectHtml('wg-acc-pu-region')) +
+      field(t('district'), '<input class="input" id="wg-acc-pu-district">') +
+      field(t('driverPhone'), '<input id="wg-acc-ph" type="tel" class="input" placeholder="+255 7xx xxx xxx">') +
+      '<button class="btn btn-primary" data-act="wg-do-accept" data-oid="' + orderId + '" data-buyer="' + buyerId + '">' + t('completeOrderSeller') + '</button>'
+    setSheetBody(html)
+  } catch (e) { showErr(e.message) }
 }
 
 async function wgDoAccept(orderId, buyerId) {
   try {
-    var ph = (document.getElementById('wg-acc-ph') || {}).value || ''
-    if (ph.trim()) {
-      await sb.from('orders').update({ driver_phone: ph.trim() }).eq('id', orderId)
+    var puRegion = ($('#wg-acc-pu-region') || {}).value || ''
+    var puDistrict = (($('#wg-acc-pu-district') || {}).value || '').trim()
+    var ph = (($('#wg-acc-ph') || {}).value || '').trim()
+    var upd = {}
+    if (puRegion) upd.pickup_region = puRegion
+    if (puDistrict) upd.pickup_district = puDistrict
+    if (ph) upd.driver_phone = ph
+    if (Object.keys(upd).length) {
+      var updRes = await sb.from('orders').update(upd).eq('id', orderId)
+      // pre-migration fallback: pickup_region/pickup_district may not exist
+      // yet, which fails the whole update — retry with driver_phone alone
+      // (already existed before this feature) so accepting still works.
+      if (updRes.error && ph) await sb.from('orders').update({ driver_phone: ph }).eq('id', orderId)
     }
     closeSheet()
     await setOrderStatus(orderId, 'accepted', buyerId)
     // If driver phone provided, immediately mark as picked_up and notify buyer
-    if (ph.trim()) {
+    if (ph) {
       await sb.from('orders').update({ delivery_status: 'picked_up' }).eq('id', orderId)
       notify(buyerId, 'order', 'Your order has been picked up by the transporter!',
-        'The driver (' + ph.trim() + ') has the package. You can now track the real-time location.',
+        'The driver (' + ph + ') has the package. You can now track the real-time location.',
         { order_id: orderId })
     }
   } catch(e) { showErr(e.message) }
