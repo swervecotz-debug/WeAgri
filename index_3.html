@@ -25,9 +25,18 @@ body{font-family:var(--body);background:var(--bone);color:var(--ink);-webkit-fon
 #root{
   max-width:1080px;margin:0 auto;position:relative;min-height:100vh;
   background:
-    radial-gradient(120% 50% at 0% 0%,rgba(232,176,75,.10),transparent 60%),
-    radial-gradient(120% 50% at 100% 100%,rgba(63,125,79,.10),transparent 60%),var(--bone);
+    radial-gradient(45% 22% at 10% -2%,rgba(232,176,75,.38),transparent 60%),
+    radial-gradient(40% 20% at 102% 8%,rgba(200,90,58,.16),transparent 65%),
+    radial-gradient(55% 30% at 92% 100%,rgba(63,125,79,.30),transparent 60%),
+    radial-gradient(38% 20% at -4% 82%,rgba(31,61,43,.14),transparent 60%),
+    var(--bone);
   box-shadow:0 0 60px -20px rgba(0,0,0,.15);
+}
+html.dark #root{
+  background:
+    radial-gradient(45% 22% at 10% -2%,rgba(232,176,75,.16),transparent 60%),
+    radial-gradient(55% 30% at 92% 100%,rgba(63,125,79,.20),transparent 60%),
+    var(--bone);
 }
 h1,h2,h3,h4{font-family:var(--display);font-weight:700;line-height:1.05;letter-spacing:-.02em}
 button{font-family:var(--body);cursor:pointer;border:none;background:none;color:inherit}
@@ -69,7 +78,8 @@ a{color:var(--leaf)}
   background:var(--card);color:var(--ink);transition:border-color .2s,box-shadow .2s}
 .input:focus,.select:focus,.textarea:focus{outline:none;border-color:var(--leaf);box-shadow:0 0 0 4px rgba(63,125,79,.12)}
 
-.card{background:var(--card);border-radius:var(--radius);border:1px solid var(--line);box-shadow:var(--shadow-sm)}
+.card{background:rgba(255,253,248,.72);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-radius:var(--radius);border:1px solid rgba(255,255,255,.55);box-shadow:var(--shadow-sm)}
+html.dark .card{background:rgba(27,34,40,.72);border-color:rgba(255,255,255,.08)}
 
 /* chips */
 .chip{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:999px;font-size:13px;font-weight:600;
@@ -84,7 +94,8 @@ a{color:var(--leaf)}
 .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 
 /* search bar */
-.search-bar{display:flex;align-items:center;gap:10px;padding:12px 16px;border-radius:999px;background:var(--card);border:1.5px solid var(--line)}
+.search-bar{display:flex;align-items:center;gap:10px;padding:12px 16px;border-radius:999px;background:rgba(255,253,248,.82);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:1.5px solid rgba(255,255,255,.55)}
+html.dark .search-bar{background:rgba(27,34,40,.82);border-color:rgba(255,255,255,.08)}
 .search-bar input{border:none;outline:none;background:none;width:100%;color:var(--ink)}
 
 /* sponsored / near badges */
@@ -107,9 +118,13 @@ a{color:var(--leaf)}
 .ticker-track{display:inline-flex;white-space:nowrap;animation:ticker 30s linear infinite}
 .ticker-item{padding:0 18px;font-size:13px;font-weight:600}
 
-/* bottom nav */
+/* bottom nav — frosted glass, rounded top corners for a floating feel
+   without changing its sticky/edge-to-edge layout (keeps every dashboard's
+   existing padding-bottom math intact) */
 .bottom-nav{position:sticky;bottom:0;z-index:40;display:flex;justify-content:space-around;align-items:center;
-  background:rgba(255,253,248,.92);backdrop-filter:blur(14px);border-top:1px solid var(--line);
+  background:rgba(255,253,248,.78);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);
+  border-top:1px solid rgba(255,255,255,.5);border-radius:22px 22px 0 0;
+  box-shadow:0 -10px 30px -18px rgba(31,61,43,.35);
   padding:8px 8px calc(8px + env(safe-area-inset-bottom))}
 .bottom-nav-inner{display:flex;justify-content:space-around;width:100%;max-width:640px;margin:0 auto}
 .nav-item{display:flex;flex-direction:column;align-items:center;gap:2px;color:var(--ink-soft);font-size:11px;font-weight:600;flex:1;padding:4px;background:none}
@@ -124,8 +139,9 @@ a{color:var(--leaf)}
 
 /* modal / bottom sheet */
 .overlay{position:fixed;inset:0;background:rgba(20,25,18,.5);z-index:80;display:flex;align-items:flex-end;justify-content:center;animation:fade .2s ease both}
-.sheet{background:var(--card);width:100%;max-width:560px;border-radius:26px 26px 0 0;padding:22px;
+.sheet{background:rgba(255,253,248,.88);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,.5);border-bottom:none;width:100%;max-width:560px;border-radius:26px 26px 0 0;padding:22px;
   padding-bottom:calc(22px + env(safe-area-inset-bottom));max-height:92vh;overflow-y:auto;animation:slideup .3s cubic-bezier(.22,1,.36,1) both}
+html.dark .sheet{background:rgba(27,34,40,.88);border-color:rgba(255,255,255,.08)}
 @keyframes slideup{from{transform:translateY(100%)}to{transform:none}}
 .sheet-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
 .sheet-head h3{font-size:19px}
@@ -227,7 +243,7 @@ html.dark{
 }
 html.dark body{background:var(--bone);color:var(--ink)}
 html.dark #root{box-shadow:none}
-html.dark .bottom-nav{background:rgba(27,34,40,.92)}
+html.dark .bottom-nav{background:rgba(27,34,40,.78);border-top-color:rgba(255,255,255,.08)}
 html.dark .search-bar input{color:var(--ink)}
 html.dark .skel{background:linear-gradient(90deg,#1b2228 25%,#222b31 50%,#1b2228 75%);background-size:200% 100%}
 
@@ -324,8 +340,11 @@ window.CFG = {
   // Public URL encoded into QR codes so phone cameras open the live site
   SITE_URL: 'https://weagri.netlify.app/',
 
-  // Flat boost price (Instagram-style promotion)
-  BOOST: { TZS: 50000, USD: 20 },
+  // Boost price (Instagram-style promotion), per period
+  BOOST: {
+    week: { TZS: 2000, USD: 1 },
+    month: { TZS: 5000, USD: 2 },
+  },
 
   // Admin portal: logs in from this same screen using this username (typed into
   // the phone field) + password instead of a phone number. The matching Supabase
@@ -463,6 +482,7 @@ window.DICT = {
     boostSub: 'Reach more buyers and appear first in the market.', goal: "What's your goal?",
     goalVisits: 'More profile visits', goalMessages: 'More messages', goalViews: 'More product views',
     audience: 'Audience', audAuto: 'Automatic', audLocal: 'My region', duration: 'Duration', days: 'days',
+    boostWeek: '1 Week', boostMonth: '1 Month',
     estReach: 'Estimated reach', people: 'people', total: 'Total', next: 'Next', back: 'Back',
     choosePayment: 'Choose payment method', payPhone: 'Mobile money number', pay: 'Pay',
     paying: 'Processing payment…', boostSuccess: 'Your post is boosted!',
@@ -539,6 +559,7 @@ window.DICT = {
     boostSub: 'Fikia wanunuzi wengi zaidi na uonekane wa kwanza sokoni.', goal: 'Lengo lako ni nini?',
     goalVisits: 'Ziara za wasifu', goalMessages: 'Ujumbe zaidi', goalViews: 'Watazamaji zaidi',
     audience: 'Walengwa', audAuto: 'Otomatiki', audLocal: 'Mkoa wangu', duration: 'Muda', days: 'siku',
+    boostWeek: 'Wiki 1', boostMonth: 'Mwezi 1',
     estReach: 'Makadirio ya ufikiaji', people: 'watu', total: 'Jumla', next: 'Endelea', back: 'Rudi',
     choosePayment: 'Chagua njia ya malipo', payPhone: 'Namba ya pesa za simu', pay: 'Lipa',
     paying: 'Inakamilisha malipo…', boostSuccess: 'Tangazo lako limeboost!',
@@ -562,10 +583,12 @@ window.H = {
     if (text.startsWith('shambalink://farm/')) return text.slice('shambalink://farm/'.length)
     return null
   },
-  boostPriceFor(country) {
+  // period: 'week' (7 days, TZS 2,000) or 'month' (30 days, TZS 5,000)
+  boostPriceFor(country, period) {
     const cur = window.H.currencyFor(country)
-    if (cur === 'TZS') return { amount: window.CFG.BOOST.TZS, currency: 'TZS', label: 'TZS ' + window.CFG.BOOST.TZS.toLocaleString() }
-    return { amount: window.CFG.BOOST.USD, currency: 'USD', label: '$' + window.CFG.BOOST.USD }
+    const tier = window.CFG.BOOST[period === 'month' ? 'month' : 'week']
+    if (cur === 'TZS') return { amount: tier.TZS, currency: 'TZS', label: 'TZS ' + tier.TZS.toLocaleString() }
+    return { amount: tier.USD, currency: 'USD', label: '$' + tier.USD }
   },
   // compare a seller price to latest market price -> {status:'high'|'low'|'fair'|null, ref, pct, unit}
   marketCompare(price, row) {
@@ -2025,22 +2048,26 @@ async function postProduct() {
 /* ----- Boost flow (Instagram-style) ----- */
 function openBoost(productId) {
   var p = (S._products || []).find(function (x) { return x.id === productId }); if (!p) return
-  S._boost = { p: p, step: 0, goal: 'views', audience: 'auto', days: 7, method: 'M-Pesa', phone: S.profile.phone || '' }
+  S._boost = { p: p, step: 0, goal: 'views', audience: 'auto', period: 'week', method: 'M-Pesa', phone: S.profile.phone || '' }
   renderBoost()
 }
+function boostDays(period) { return period === 'month' ? 30 : 7 }
 function renderBoost() {
-  var b = S._boost, price = window.H.boostPriceFor(S.country)
+  var b = S._boost, price = window.H.boostPriceFor(S.country, b.period), days = boostDays(b.period)
   var preview = '<div class="card" style="display:flex;gap:12px;padding:12px;margin-bottom:16px;align-items:center;background:var(--bone-2);border:none"><div class="photo" style="width:52px;height:52px;border-radius:12px;font-size:24px;' + (b.p.photo_url ? "background-image:url('" + esc(b.p.photo_url) + "')" : '') + '">' + (b.p.photo_url ? '' : ic('leaf', 24)) + '</div><div style="min-width:0"><div style="font-weight:700;font-size:14px">' + esc(b.p.title) + '</div><div class="muted" style="font-size:12px">' + t('boostSub') + '</div></div></div>'
   var html
   if (b.step === 0) {
-    var reachLow = (b.days * 350).toLocaleString(), reachHigh = (b.days * 1200).toLocaleString()
+    var reachLow = (days * 350).toLocaleString(), reachHigh = (days * 1200).toLocaleString()
     html = preview +
       '<label class="muted" style="font-size:13px;font-weight:700">' + t('goal') + '</label><div style="display:grid;gap:8px;margin:8px 0 16px">' +
         [['views', ic('eye', 16) + ' ' + t('goalViews')], ['visits', ic('group', 16) + ' ' + t('goalVisits')], ['messages', ic('chat', 16) + ' ' + t('goalMessages')]].map(function (g) { return '<button class="opt ' + (b.goal === g[0] ? 'sel' : '') + '" data-act="bgoal" data-v="' + g[0] + '"><span style="font-weight:600">' + g[1] + '</span></button>' }).join('') + '</div>' +
       '<label class="muted" style="font-size:13px;font-weight:700">' + t('audience') + '</label><div class="grid-2" style="margin:8px 0 16px">' +
         [['auto', t('audAuto')], ['local', t('audLocal')]].map(function (a) { return '<button class="opt ' + (b.audience === a[0] ? 'sel' : '') + '" data-act="baud" data-v="' + a[0] + '"><span style="font-weight:700">' + a[1] + '</span></button>' }).join('') + '</div>' +
-      '<label class="muted" style="font-size:13px;font-weight:700">' + t('duration') + '</label><div class="row-scroll" style="margin:8px 0 16px">' +
-        [3, 7, 14].map(function (d) { return '<button class="chip ' + (b.days === d ? 'selected' : '') + '" data-act="bdays" data-v="' + d + '">' + d + ' ' + t('days') + '</button>' }).join('') + '</div>' +
+      '<label class="muted" style="font-size:13px;font-weight:700">' + t('duration') + '</label><div class="grid-2" style="margin:8px 0 16px">' +
+        [['week', t('boostWeek')], ['month', t('boostMonth')]].map(function (pr) {
+          var pp = window.H.boostPriceFor(S.country, pr[0])
+          return '<button class="opt ' + (b.period === pr[0] ? 'sel' : '') + '" data-act="bperiod" data-v="' + pr[0] + '" style="flex-direction:column;align-items:flex-start;gap:2px"><span style="font-weight:700">' + pr[1] + '</span><span class="muted" style="font-size:12px">' + pp.label + '</span></button>'
+        }).join('') + '</div>' +
       '<div class="card" style="padding:14px;margin-bottom:16px;background:var(--maize-soft);border:none"><div style="display:flex;justify-content:space-between;font-size:13px"><span class="muted">' + t('estReach') + '</span><b>' + reachLow + '–' + reachHigh + ' ' + t('people') + '</b></div><div style="display:flex;justify-content:space-between;margin-top:8px;align-items:center"><span class="muted" style="font-size:13px">' + t('total') + '</span><b style="font-size:20px;font-family:var(--display);color:var(--forest)">' + price.label + '</b></div></div>' +
       '<button class="btn btn-primary" data-act="bnext">' + t('next') + '</button>'
   } else if (b.step === 1) {
@@ -2060,12 +2087,12 @@ function renderBoost() {
   })
 }
 async function boostPay() {
-  var b = S._boost, price = window.H.boostPriceFor(S.country)
+  var b = S._boost, price = window.H.boostPriceFor(S.country, b.period), days = boostDays(b.period)
   var phEl = document.getElementById('b_phone'); if (phEl) b.phone = phEl.value.trim()
   if (!b.phone) { toast('Enter mobile money number'); return }
   try {
-    var ends = new Date(Date.now() + b.days * 86400000).toISOString()
-    var ins = await sb.from('boosts').insert({ product_id: b.p.id, seller_id: S.profile.id, goal: b.goal, audience: b.audience, duration_days: b.days, amount: price.amount, currency: price.currency, method: b.method, pay_phone: b.phone, status: 'active', ends_at: ends })
+    var ends = new Date(Date.now() + days * 86400000).toISOString()
+    var ins = await sb.from('boosts').insert({ product_id: b.p.id, seller_id: S.profile.id, goal: b.goal, audience: b.audience, duration_days: days, amount: price.amount, currency: price.currency, method: b.method, pay_phone: b.phone, status: 'active', ends_at: ends })
     if (ins.error) throw ins.error
     await sb.from('products').update({ boosted_until: ends }).eq('id', b.p.id)
     await sb.from('transactions').insert({ profile_id: S.profile.id, type: 'debit', amount: price.amount, method: b.method, status: 'completed' })
@@ -3469,7 +3496,7 @@ document.addEventListener('click', function (e) {
     case 'boost': openBoost(id); break
     case 'bgoal': S._boost.goal = v; renderBoost(); break
     case 'baud': S._boost.audience = v; renderBoost(); break
-    case 'bdays': S._boost.days = Number(v); renderBoost(); break
+    case 'bperiod': S._boost.period = v; renderBoost(); break
     case 'bnext': S._boost.step = 1; renderBoost(); break
     case 'bback': S._boost.step = 0; renderBoost(); break
     case 'bmethod': S._boost.method = v; renderBoost(); break
