@@ -413,6 +413,14 @@ window.DICT = {
     phone: 'Phone number', email: 'Email (optional)', region: 'Region', password: 'Password', iAmA: 'I am a…',
     buyer: 'Buyer', seller: 'Seller', buyerDesc: 'I want to buy produce, livestock, seeds & inputs',
     sellerDesc: 'I want to sell on WeAgri', farmer: 'Crop Farmer', livestock: 'Livestock Farmer',
+    buyerCategory: 'Category', individual: 'Individual', business: 'Business',
+    individualDesc: 'Buying for myself', businessDesc: 'Buying for my company or business',
+    businessFullName: 'Business full name', businessEmail: 'Business email', businessPhone: 'Business phone number',
+    businessLocation: 'Business location', setPassword: 'Set password', confirmPassword: 'Confirm password',
+    passwordMismatch: 'Passwords do not match.',
+    weakPassword: 'Password must be at least 8 characters and include an uppercase letter, a lowercase letter, a number and a symbol.',
+    tcAgree: 'I accept the WeAgri Terms and Conditions', mustAcceptTerms: 'Please accept the Terms and Conditions to continue.',
+    fillBusinessFields: 'Please fill all business details, region and a strong, matching password.',
     seedSeller: 'Seed Seller', fertilizerSeller: 'Fertilizer Seller', farmerDesc: 'I grow crops',
     livestockDesc: 'I keep animals', seedDesc: 'I sell seeds', fertilizerDesc: 'I sell fertilizer & inputs',
     whatCrops: 'What crops do you grow?', farmSize: 'How large is your farm? (acres)',
@@ -507,6 +515,14 @@ window.DICT = {
     phone: 'Namba ya simu', email: 'Barua pepe (si lazima)', region: 'Mkoa', password: 'Nenosiri', iAmA: 'Mimi ni…',
     buyer: 'Mnunuzi', seller: 'Muuzaji', buyerDesc: 'Nataka kununua mazao, mifugo, mbegu na pembejeo',
     sellerDesc: 'Nataka kuuza kwenye WeAgri', farmer: 'Mkulima wa Mazao', livestock: 'Mfugaji',
+    buyerCategory: 'Aina', individual: 'Mtu binafsi', business: 'Biashara',
+    individualDesc: 'Ninanunua kwa ajili yangu', businessDesc: 'Ninanunua kwa ajili ya kampuni/biashara yangu',
+    businessFullName: 'Jina kamili la biashara', businessEmail: 'Barua pepe ya biashara', businessPhone: 'Namba ya simu ya biashara',
+    businessLocation: 'Mahali biashara ilipo', setPassword: 'Weka nenosiri', confirmPassword: 'Thibitisha nenosiri',
+    passwordMismatch: 'Manenosiri hayafanani.',
+    weakPassword: 'Nenosiri liwe na herufi 8+ likijumuisha herufi kubwa, herufi ndogo, namba na alama.',
+    tcAgree: 'Nakubali Masharti na Sera ya WeAgri', mustAcceptTerms: 'Tafadhali kubali Masharti na Sera ili kuendelea.',
+    fillBusinessFields: 'Tafadhali jaza taarifa zote za biashara, mkoa na nenosiri imara linalofanana.',
     seedSeller: 'Muuza Mbegu', fertilizerSeller: 'Muuza Mbolea', farmerDesc: 'Ninalima mazao',
     livestockDesc: 'Ninafuga wanyama', seedDesc: 'Ninauza mbegu', fertilizerDesc: 'Ninauza mbolea na pembejeo',
     whatCrops: 'Unalima mazao gani?', farmSize: 'Shamba lako ni kubwa kiasi gani? (ekari)',
@@ -1434,7 +1450,7 @@ function screenCountry() {
 }
 
 /* ---------------- [AUTH] ---------------- */
-var A = { mode: 'signup', step: 0, role: 'seller', sellerType: 'farmer', crops: [], animals: [], items: [], farmSize: '' }
+var A = { mode: 'signup', step: 0, role: 'seller', sellerType: 'farmer', crops: [], animals: [], items: [], farmSize: '', accountCategory: 'individual', district: '', pw2: '', tc: false }
 function screenAuth() {
   A.step = 0
   root.innerHTML = '<div class="app-shell"><div class="page-pad fade-in"><div class="wrap-narrow" id="authwrap"></div></div></div>'
@@ -1450,19 +1466,35 @@ function renderAuth() {
 
   var body = ''
   if (A.mode === 'login') {
-    body = field(t('phone'), '<input class="input" id="f_phone" placeholder="+255 7XX XXX XXX">') + pwField()
+    body = field(t('phone'), '<input class="input" id="f_phone" placeholder="+255 7XX XXX XXX">') + pwField() + tcCheckboxHtml()
   } else if (A.step === 0) {
+    var isBiz = A.role === 'buyer' && A.accountCategory === 'business'
     body =
       '<div class="field"><label>' + t('iAmA') + '</label><div class="grid-2">' +
         roleCard('buyer', 'basket', t('buyer'), t('buyerDesc'), A.role === 'buyer') +
         roleCard('seller', 'box', t('seller'), t('sellerDesc'), A.role === 'seller') +
         roleCard('doctor', 'shield', t('doctor'), t('doctorDesc'), A.role === 'doctor') +
       '</div></div>' +
-      field(t('fullName'), '<input class="input" id="f_name">') +
-      field(t('phone'), '<input class="input" id="f_phone" placeholder="+255 7XX XXX XXX">') +
-      field(t('email'), '<input class="input" id="f_email" type="email">') +
-      field(t('region'), '<select class="select" id="f_region"><option value="">—</option>' + (window.REGIONS[S.country] || window.REGIONS.TZ).map(function (r) { return '<option>' + esc(r) + '</option>' }).join('') + '</select>') +
-      pwField()
+      (A.role === 'buyer' ? '<div class="field"><label>' + t('buyerCategory') + '</label><div class="grid-2">' +
+        roleCard('cat-individual', 'user', t('individual'), t('individualDesc'), A.accountCategory === 'individual') +
+        roleCard('cat-business', 'box', t('business'), t('businessDesc'), A.accountCategory === 'business') +
+      '</div></div>' : '') +
+      (isBiz ?
+        field(t('businessFullName'), '<input class="input" id="f_name" value="' + esc(A.name || '') + '">') +
+        field(t('businessEmail'), '<input class="input" id="f_email" type="email" value="' + esc(A.email || '') + '">') +
+        field(t('businessPhone'), '<input class="input" id="f_phone" placeholder="+255 7XX XXX XXX" value="' + esc(A.phone || '') + '">') +
+        field(t('region'), regionSelectHtml('f_region')) +
+        field(t('district'), '<input class="input" id="f_district" value="' + esc(A.district || '') + '">') +
+        field(t('setPassword'), '<input class="input" id="f_pw" type="password">') +
+        field(t('confirmPassword'), '<input class="input" id="f_pw2" type="password">')
+      :
+        field(t('fullName'), '<input class="input" id="f_name">') +
+        field(t('phone'), '<input class="input" id="f_phone" placeholder="+255 7XX XXX XXX">') +
+        field(t('email'), '<input class="input" id="f_email" type="email">') +
+        field(t('region'), '<select class="select" id="f_region"><option value="">—</option>' + (window.REGIONS[S.country] || window.REGIONS.TZ).map(function (r) { return '<option>' + esc(r) + '</option>' }).join('') + '</select>') +
+        pwField()
+      ) +
+      tcCheckboxHtml()
   } else if (A.step === 1) {
     if (A.role === 'doctor') {
       body = '<div class="field"><label>' + t('chooseSpecialty') + '</label><div class="grid-2">' +
@@ -1501,6 +1533,14 @@ function renderAuth() {
 }
 function field(label, inner) { return '<div class="field"><label>' + esc(label) + '</label>' + inner + '</div>' }
 function pwField() { return '<div class="field"><label>' + t('password') + '</label><div style="position:relative"><input class="input" id="f_pw" type="password" style="padding-right:46px"><button data-act="pw-toggle" style="position:absolute;right:12px;top:11px;color:var(--ink-soft)">' + ic('eye', 18) + '</button></div></div>' }
+function tcCheckboxHtml() {
+  return '<label style="display:flex;align-items:flex-start;gap:10px;margin:14px 0 6px;font-size:13px;color:var(--ink-soft);cursor:pointer">' +
+    '<input type="checkbox" id="f_tc" style="margin-top:2px;width:17px;height:17px;flex-shrink:0"' + (A.tc ? ' checked' : '') + '>' +
+    '<span>' + esc(t('tcAgree')) + '</span></label>'
+}
+function isStrongPassword(pw) {
+  return !!pw && pw.length >= 8 && /[a-z]/.test(pw) && /[A-Z]/.test(pw) && /[0-9]/.test(pw) && /[^A-Za-z0-9]/.test(pw)
+}
 function roleCard(act, emoji, title, desc, sel) {
   return '<button class="opt ' + (sel ? 'sel' : '') + '" data-act="role" data-v="' + act + '" style="flex-direction:column;align-items:flex-start;gap:8px"><span class="em">' + ic(emoji, 22) + '</span><span><span style="font-weight:700;font-family:var(--display);display:block">' + esc(title) + '</span><span class="muted" style="font-size:12px">' + esc(desc) + '</span></span></button>'
 }
@@ -1512,13 +1552,27 @@ async function authNext() {
   if (document.getElementById('f_name')) A.name = document.getElementById('f_name').value.trim()
   if (document.getElementById('f_email')) A.email = document.getElementById('f_email').value.trim()
   if (document.getElementById('f_region')) A.region = document.getElementById('f_region').value
+  if (document.getElementById('f_district')) A.district = document.getElementById('f_district').value.trim()
   if (document.getElementById('f_pw')) A.pw = document.getElementById('f_pw').value
+  if (document.getElementById('f_pw2')) A.pw2 = document.getElementById('f_pw2').value
   if (document.getElementById('f_size')) A.farmSize = document.getElementById('f_size').value
+  if (document.getElementById('f_tc')) A.tc = document.getElementById('f_tc').checked
 
-  if (A.mode === 'login') return doLogin()
+  if (A.mode === 'login') {
+    if (!A.tc) { setAuthErr(t('mustAcceptTerms')); return }
+    return doLogin()
+  }
   // validate step 0
   if (A.step === 0) {
-    if (!A.name || !A.phone || !A.region || !(A.pw && A.pw.length >= 6)) { setAuthErr('Please fill name, phone, region and a 6+ char password.'); return }
+    if (!A.tc) { setAuthErr(t('mustAcceptTerms')); return }
+    var isBiz = A.role === 'buyer' && A.accountCategory === 'business'
+    if (isBiz) {
+      if (!A.name || !A.email || !A.phone || !A.region || !A.pw || !A.pw2) { setAuthErr(t('fillBusinessFields')); return }
+      if (A.pw !== A.pw2) { setAuthErr(t('passwordMismatch')); return }
+      if (!isStrongPassword(A.pw)) { setAuthErr(t('weakPassword')); return }
+    } else if (!A.name || !A.phone || !A.region || !(A.pw && A.pw.length >= 6)) {
+      setAuthErr('Please fill name, phone, region and a 6+ char password.'); return
+    }
     if (A.role === 'buyer') return doSignup()
     A.step = 1; return renderAuth()
   }
@@ -1576,12 +1630,18 @@ async function doLogin() {
 async function doSignup() {
   try {
     S._busy = true
+    var isBiz = A.role === 'buyer' && A.accountCategory === 'business'
     // pass everything as user metadata so the database trigger can build the profile
     var meta = {
       full_name: A.name, phone: A.phone || '', region: A.region || '',
       country: S.country, role: A.role,
       seller_type: (A.role === 'seller' || A.role === 'doctor') ? A.sellerType : '',
       farm_size: (A.role === 'seller' && A.sellerType === 'farmer' && A.farmSize) ? String(A.farmSize) : '',
+      account_category: A.role === 'buyer' ? A.accountCategory : '',
+    }
+    if (isBiz) {
+      meta.business_name = A.name; meta.business_email = A.email || ''; meta.business_phone = A.phone || ''
+      meta.business_region = A.region || ''; meta.business_district = A.district || ''
     }
     var su = await sb.auth.signUp({ email: authEmail(), password: A.pw, options: { data: meta } })
     if (su.error) throw su.error
@@ -1591,14 +1651,24 @@ async function doSignup() {
     // Best-effort: if the trigger isn't installed yet but the user IS logged in
     // (Confirm email OFF), this creates the profile directly. If it's blocked by
     // RLS we ignore it — the database trigger handles profile creation.
-    var profile = {
+    var profileBase = {
       id: user.id, full_name: A.name, phone: A.phone, email: A.email || null,
       region: A.region, country: S.country, role: A.role,
       seller_type: (A.role === 'seller' || A.role === 'doctor') ? A.sellerType : null,
       farm_size: (A.role === 'seller' && A.sellerType === 'farmer') ? (Number(A.farmSize) || null) : null,
       qr_code: window.H.makeQrPayload(user.id),
     }
-    await sb.from('profiles').upsert(profile)   // error (if any) ignored on purpose
+    // account_category / business_* columns are a newer addition — degrade gracefully
+    // if the migration hasn't been run on this project yet (PostgREST rejects the
+    // whole row on an unknown column, so retry with just the base fields).
+    if (A.role === 'buyer') {
+      var profileWithCat = Object.assign({}, profileBase, { account_category: A.accountCategory })
+      if (isBiz) Object.assign(profileWithCat, { business_name: A.name, business_email: A.email || null, business_phone: A.phone || null, business_region: A.region || null, business_district: A.district || null })
+      var up1 = await sb.from('profiles').upsert(profileWithCat)
+      if (up1.error) await sb.from('profiles').upsert(profileBase)   // error (if any) ignored on purpose
+    } else {
+      await sb.from('profiles').upsert(profileBase)   // error (if any) ignored on purpose
+    }
     if (A.role === 'seller') {
       if (A.sellerType === 'farmer' && A.crops.length) await sb.from('crops').insert(A.crops.map(function (n) { return { profile_id: user.id, name: n } }))
       else if (A.sellerType === 'livestock' && A.animals.length) await sb.from('livestock').insert(A.animals.map(function (a) { return { profile_id: user.id, animal_type: a.name, count: a.count } }))
@@ -3547,6 +3617,8 @@ document.addEventListener('click', function (e) {
       else if (v === 'doctor') { A.role = 'doctor'; if (!A.sellerType || A.sellerType.indexOf('doctor_') !== 0) A.sellerType = 'doctor_plants' }
       else if (v.indexOf('st-') === 0) A.sellerType = v.slice(3)
       else if (v.indexOf('dt-') === 0) A.sellerType = 'doctor_' + v.slice(3)
+      else if (v === 'cat-individual') A.accountCategory = 'individual'
+      else if (v === 'cat-business') A.accountCategory = 'business'
       renderAuth(); break
     case 'crop': var i = A.crops.indexOf(v); if (i >= 0) A.crops.splice(i, 1); else A.crops.push(v); renderAuth(); break
     case 'item': var j = A.items.indexOf(v); if (j >= 0) A.items.splice(j, 1); else A.items.push(v); renderAuth(); break
