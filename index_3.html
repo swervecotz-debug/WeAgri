@@ -346,6 +346,9 @@ window.CFG = {
     month: { TZS: 5000, USD: 2 },
   },
 
+  // One-time business verification fee (TIN-based badge for business buyers)
+  BIZ_VERIF_FEE: { TZS: 13000, USD: 5 },
+
   // Admin portal: logs in from this same screen using this username (typed into
   // the phone field) + password instead of a phone number. The matching Supabase
   // Auth user/profile is created by supabase-admin-setup.sql (see that file).
@@ -353,6 +356,12 @@ window.CFG = {
   ADMIN_USERNAME: 'kelvin Jeremiah',
   ADMIN_EMAIL: 'kelvin.jeremiah@admin.weagri.app',
 }
+
+// Verified-badge artwork (cropped from verified_badge.png): blue for business
+// buyers (TIN + wallet payment), green for sellers (NIDA-based KYC). Both are
+// the same badge shape, recolored — see wgVerifBadge().
+window.BADGE_BLUE_PNG = 'data:image/png;base64,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'
+window.BADGE_GREEN_PNG = 'data:image/png;base64,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'
 
 window.LANGUAGES = [
   { code: 'sw', label: 'Kiswahili', flag: '🇹🇿' },
@@ -627,6 +636,12 @@ window.H = {
     const tier = window.CFG.BOOST[period === 'month' ? 'month' : 'week']
     if (cur === 'TZS') return { amount: tier.TZS, currency: 'TZS', label: 'TZS ' + tier.TZS.toLocaleString() }
     return { amount: tier.USD, currency: 'USD', label: '$' + tier.USD }
+  },
+  bizVerifFeeFor(country) {
+    const cur = window.H.currencyFor(country)
+    const f = window.CFG.BIZ_VERIF_FEE
+    if (cur === 'TZS') return { amount: f.TZS, currency: 'TZS', label: 'TZS ' + f.TZS.toLocaleString() }
+    return { amount: f.USD, currency: 'USD', label: '$' + f.USD }
   },
   // compare a seller price to latest market price -> {status:'high'|'low'|'fair'|null, ref, pct, unit}
   marketCompare(price, row) {
@@ -1988,10 +2003,14 @@ async function sellerOrders() {
   v.innerHTML = '<div class="page-pad fade-in"><h2 style="font-size:24px;color:var(--forest);margin-bottom:14px">' + t('activeOrders') + '</h2>' +
     '<div class="row-scroll" style="margin-bottom:14px">' + ['pending', 'accepted', 'completed'].map(function (s) { return '<button class="chip ' + (S._ofilter === s ? 'selected' : '') + '" data-act="ofilter" data-v="' + s + '">' + t(s) + '</button>' }).join('') + '</div><div id="orderlist">' + spinner() + '</div></div>'
   try {
-    var r = await sb.from('orders').select('*, products(title, price, unit), buyer:profiles!orders_buyer_id_fkey(full_name, phone)').eq('seller_id', S.profile.id).order('created_at', { ascending: false })
+    // account_category is a newer profiles column — degrade gracefully (fall back to
+    // the original select) if the migration hasn't been run on this project yet.
+    var r = await sb.from('orders').select('*, products(title, price, unit), buyer:profiles!orders_buyer_id_fkey(full_name, phone, is_verified, account_category)').eq('seller_id', S.profile.id).order('created_at', { ascending: false })
+    if (r.error) r = await sb.from('orders').select('*, products(title, price, unit), buyer:profiles!orders_buyer_id_fkey(full_name, phone)').eq('seller_id', S.profile.id).order('created_at', { ascending: false })
     var list = (r.data || []).filter(function (o) { return o.status === S._ofilter })
     var _g_orderlist = document.getElementById('orderlist'); if (_g_orderlist) _g_orderlist.innerHTML = list.length ? list.map(function (o) {
       var buyerName = o.buyer ? o.buyer.full_name : t('buyer')
+      var buyerBadge = (o.buyer && o.buyer.account_category === 'business' && o.buyer.is_verified) ? wgVerifBadge('approved', 'blue') : ''
       // an "offer" is a pending order whose total doesn't match qty × the
       // normal listed (buyer) price — see doSendOffer(). No dedicated
       // column for this exists yet, so it's inferred from the price gap.
@@ -2000,7 +2019,7 @@ async function sellerOrders() {
       if (isOffer) {
         return '<div class="card" style="padding:16px;margin-bottom:10px;border:1.5px solid var(--maize);box-shadow:0 0 0 3px rgba(232,176,75,.18)">' +
           '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><span style="display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:999px;background:var(--maize);color:var(--forest);font-size:10.5px;font-weight:800;text-transform:uppercase">' + ic('boost', 11) + ' ' + t('newOffer') + '</span><span class="muted" style="font-size:11px">' + _wgExactTime(o.created_at) + '</span></div>' +
-          '<div style="display:flex;gap:12px;margin-bottom:14px">' + avatar(buyerName, 44) + '<div style="font-size:13.5px;line-height:1.5"><b>' + esc(buyerName)+ '</b> ' + t('wantsToBuyMsg').replace('{qty}', o.quantity).replace('{unit}', esc(o.products.unit)).replace('{title}', esc(o.products.title)).replace('{price}', '<b style="color:var(--clay)">' + money(o.total_price) + '</b>').replace('{listed}', '<span style="text-decoration:line-through" class="muted">' + money(listedTotal) + '</span>') + '</div></div>' +
+          '<div style="display:flex;gap:12px;margin-bottom:14px">' + avatar(buyerName, 44) + '<div style="font-size:13.5px;line-height:1.5"><b>' + esc(buyerName) + buyerBadge + '</b> ' + t('wantsToBuyMsg').replace('{qty}', o.quantity).replace('{unit}', esc(o.products.unit)).replace('{title}', esc(o.products.title)).replace('{price}', '<b style="color:var(--clay)">' + money(o.total_price) + '</b>').replace('{listed}', '<span style="text-decoration:line-through" class="muted">' + money(listedTotal) + '</span>') + '</div></div>' +
           '<div style="display:flex;gap:8px"><button class="btn btn-primary" style="padding:10px;flex:1;font-size:13px" data-act="wg-accept-flow" data-id="' + o.id + '" data-buyer="' + o.buyer_id + '">' + t('accept') + '</button><button class="btn btn-ghost" style="padding:10px;flex:1;font-size:13px;color:var(--clay)" data-act="wg-decline-offer" data-id="' + o.id + '" data-buyer="' + o.buyer_id + '">' + t('decline') + '</button></div>' +
         '</div>'
       }
@@ -2011,7 +2030,7 @@ async function sellerOrders() {
       var locBtn = (o.buyer_lat && o.buyer_lng) ? '<button class="chip" style="margin-top:10px" data-act="buyer-loc" data-lat="' + o.buyer_lat + '" data-lng="' + o.buyer_lng + '" data-name="' + esc(buyerName) + '" data-loc="' + esc(o.buyer_location || '') + '">' + ic('pin', 13) + ' ' + t('viewLocation') + '</button>' : ''
       return '<div class="card" style="padding:16px;margin-bottom:10px"><b>' + esc(o.products ? o.products.title : 'Order') + '</b>' +
         '<div class="muted" style="font-size:13px">' + esc(o.quantity) + ' · ' + money(o.total_price) + '</div>' +
-        '<div style="font-size:13px;margin-top:6px;display:flex;align-items:center;gap:8px">' + avatar(buyerName, 26) + '<b>' + esc(buyerName) + '</b></div>' +
+        '<div style="font-size:13px;margin-top:6px;display:flex;align-items:center;gap:8px">' + avatar(buyerName, 26) + '<b>' + esc(buyerName) + buyerBadge + '</b></div>' +
         locLine + locBtn + (o.driver_phone ? '<div style="font-size:12px;margin-top:8px;padding:8px;background:var(--leaf-soft);border-radius:8px">' + ic('truck',12) + ' Driver: <a href="tel:' + esc(o.driver_phone) + '" style="color:var(--forest);font-weight:700">' + esc(o.driver_phone) + '</a></div>' : '') + btns + '</div>'
     }).join('') : empty('box', t('noOrders'))
   } catch (e) { showErr(e.message) }
@@ -3447,7 +3466,8 @@ async function buyerProfile() {
   var isDoctor = S.profile.role === 'doctor'
   var roleLabel = isDoctor ? t(window.H.sellerTypeLabel(S.profile.seller_type)) : t('buyer')
   var qrCard = isDoctor ? '<div class="card center" style="padding:20px;margin-bottom:16px"><div style="display:flex;justify-content:center;gap:8px;align-items:center;margin-bottom:10px">' + ic('qr', 18) + ' <b>' + t('myQr') + '</b></div><div id="qrbox" class="skel" style="width:180px;height:180px;margin:0 auto"></div><p class="muted" style="font-size:12px;margin-top:12px;max-width:240px;margin-inline:auto">' + t('qrDesc') + '</p></div>' : ''
-  v.innerHTML = '<div class="page-pad fade-in"><div class="center" style="margin-bottom:18px">' + ownAvatarWithCamera(72, isDoctor ? 'var(--forest)' : 'var(--clay)') + '<h2 style="font-size:22px;margin-top:10px">' + esc(S.profile.full_name) + '</h2><p class="muted" style="font-size:14px">' + esc(S.profile.region) + ' · ' + roleLabel + '</p></div>' +
+  v.innerHTML = '<div class="page-pad fade-in"><div class="center" style="margin-bottom:18px">' + ownAvatarWithCamera(72, isDoctor ? 'var(--forest)' : 'var(--clay)') + '<h2 style="font-size:22px;margin-top:10px">' + esc(S.profile.full_name) + (typeof wgVerifBadge === 'function' && S.profile.account_category === 'business' ? wgVerifBadge(S.profile.is_verified ? 'approved' : S.profile.verification_status, 'blue') : '') + '</h2><p class="muted" style="font-size:14px">' + esc(S.profile.region) + ' · ' + roleLabel + '</p></div>' +
+    (typeof wgBizVerifSection === 'function' ? wgBizVerifSection() : '') +
     qrCard +
     (isDoctor ? '<h3 style="font-size:18px;margin-bottom:10px">' + t('ratings') + '</h3><div id="dreviews" style="margin-bottom:16px"></div>' : '') +
     '<button class="btn btn-ghost" style="display:flex;align-items:center;gap:10px;justify-content:center" data-act="wg-favorites">' +
@@ -3811,6 +3831,8 @@ document.addEventListener('click', function (e) {
     case 'wg-priv-vis': wgPrivSelectVis(v); break
     case 'wg-ni-noop': break
     case 'wg-verif-s1': wgVerifS1(); break
+    case 'wg-biz-verif-start': wgBizVerifStart(); break
+    case 'wg-biz-verif-pay': wgBizVerifPay(); break
     case 'wg-idcam': wgStartIdCamera(el.getAttribute('data-field'), el.getAttribute('data-field') === 'front_id' ? t('frontIdTitle') : t('backIdTitle')); break
     case 'wg-vs2': wgVerifS2(); break
     case 'wg-vs3': wgVerifS2Continue(); break
@@ -5234,6 +5256,11 @@ function wgSubscribeMsgStatus(threadId) {
 ;(function () {
   var en = {
     addVerifBadge:'Add verification badge', verifiedSeller:'Verified Seller',
+    verifiedBusiness:'Verified Business', verifBizDesc:'Your business is verified with WeAgri. This builds trust with sellers.',
+    getVerifiedBiz:'Get verified badge', verifBizTitle:'Verify Your Business', verifBizSubtitle:'Enter your business TIN and pay a one-time fee to get a verified badge that builds trust with sellers.',
+    tinNumber:'Business TIN number', verifBizFee:'Verification fee', payAndVerify:'Pay & get verified',
+    verifBizSuccess:'Business verified!', verifBizSuccessDesc:'Your verified badge is now live on your profile.',
+    verifBizIncomplete:'Please enter your business TIN number.',
     verifPending:'Under Review', verifRejected:'Verification Failed',
     verifTitle:'Verify Your Identity', verifSubtitle:'Build trust with buyers by verifying your identity as an authorised farmer.',
     verifB1:'Your WeAgri profile gets a Verified badge visible to all buyers and sellers.',
@@ -5288,6 +5315,11 @@ function wgSubscribeMsgStatus(threadId) {
   }
   var sw = {
     addVerifBadge:'Ongeza beji ya uthibitisho', verifiedSeller:'Muuzaji Aliyethibitishwa',
+    verifiedBusiness:'Biashara Iliyothibitishwa', verifBizDesc:'Biashara yako imethibitishwa na WeAgri. Hii inajenga imani kwa wauzaji.',
+    getVerifiedBiz:'Pata beji ya uthibitisho', verifBizTitle:'Thibitisha Biashara Yako', verifBizSubtitle:'Weka namba yako ya TIN ya biashara na lipia ada ya mara moja kupata beji ya uthibitisho inayojenga imani kwa wauzaji.',
+    tinNumber:'Namba ya TIN ya biashara', verifBizFee:'Ada ya uthibitisho', payAndVerify:'Lipa na uthibitishwe',
+    verifBizSuccess:'Biashara imethibitishwa!', verifBizSuccessDesc:'Beji yako ya uthibitisho sasa iko kwenye wasifu wako.',
+    verifBizIncomplete:'Tafadhali weka namba yako ya TIN ya biashara.',
     verifPending:'Inapitiwa', verifRejected:'Uthibitisho Ulikataliwa',
     verifTitle:'Thibitisha Utambulisho Wako', verifSubtitle:'Jenga imani na wanunuzi kwa kuthibitisha utambulisho wako kama mkulima aliyeidhinishwa.',
     verifB1:'Wasifu wako wa WeAgri utapata beji ya Uthibitisho inayoonekana kwa wanunuzi wote.',
@@ -5369,10 +5401,10 @@ function wgSubscribeMsgStatus(threadId) {
   ;[['en',en],['sw',sw]].forEach(function(p){ if(window.DICT[p[0]]) Object.assign(window.DICT[p[0]],p[1]) })
 })()
 
-function wgVerifBadge(status) {
+function wgVerifBadge(status, color) {
   if (status === 'approved' || status === true) {
-    return '<span style="display:inline-flex;align-items:center;gap:3px;background:linear-gradient(135deg,var(--forest),#2d8a2d);color:#fff;font-size:11px;font-weight:800;padding:3px 8px;border-radius:100px;vertical-align:middle;margin-left:5px;letter-spacing:0.2px">' +
-      ic('shield',12,'#fff') + ' ' + t('verified') + '</span>'
+    var img = color === 'blue' ? window.BADGE_BLUE_PNG : window.BADGE_GREEN_PNG
+    return '<img src="' + img + '" alt="' + esc(t('verified')) + '" title="' + esc(t('verified')) + '" style="width:17px;height:17px;vertical-align:middle;margin-left:5px">'
   }
   if (status === 'pending') {
     return '<span style="display:inline-flex;align-items:center;gap:3px;background:#e8b04b;color:#1f3d2b;font-size:11px;font-weight:800;padding:3px 8px;border-radius:100px;vertical-align:middle;margin-left:5px">' +
@@ -5391,7 +5423,7 @@ function wgVerifSection() {
   var st = S.profile && (S.profile.is_verified ? 'approved' : S.profile.verification_status)
   if (st === 'approved') {
     return '<div class="card" style="padding:14px 16px;margin-bottom:16px;display:flex;align-items:center;gap:12px;background:var(--leaf-soft);border:1px solid var(--leaf)">' +
-      '<span style="width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,var(--forest),#2d8a2d);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#fff">' + ic('verified',20) + '</span>' +
+      '<img src="' + window.BADGE_GREEN_PNG + '" style="width:38px;height:38px;flex-shrink:0">' +
       '<div style="flex:1"><b style="font-size:14px;color:var(--forest)">' + t('verifiedSeller') + '</b><p class="muted" style="font-size:12px;margin-top:2px">' + t('verifB1') + '</p></div></div>'
   }
   if (st === 'pending') {
@@ -5404,6 +5436,61 @@ function wgVerifSection() {
     : ''
   return '<div style="margin-bottom:16px">' + note +
     '<button class="wg-verif-btn" data-act="wg-verif-s1">' + ic('verified',18) + ' ' + t('addVerifBadge') + '</button></div>'
+}
+
+// ── Business-buyer verification block (TIN + one-time wallet fee) ──────
+// Shown ONLY on a business buyer's own profile page (account_category ===
+// 'business'). Unlike the seller's document-review flow, this one is a
+// simple paid check: enter the TIN, pay the fee from the buyer's own
+// WeAgri wallet, badge goes live immediately.
+function wgBizVerifSection() {
+  if (!(S.profile && S.profile.role === 'buyer' && S.profile.account_category === 'business')) return ''
+  if (S.profile.is_verified) {
+    return '<div class="card" style="padding:14px 16px;margin-bottom:16px;display:flex;align-items:center;gap:12px;background:var(--leaf-soft);border:1px solid var(--leaf)">' +
+      '<img src="' + window.BADGE_BLUE_PNG + '" style="width:38px;height:38px;flex-shrink:0">' +
+      '<div style="flex:1"><b style="font-size:14px;color:var(--forest)">' + t('verifiedBusiness') + '</b><p class="muted" style="font-size:12px;margin-top:2px">' + t('verifBizDesc') + '</p></div></div>'
+  }
+  return '<div style="margin-bottom:16px"><button class="wg-verif-btn" data-act="wg-biz-verif-start">' + ic('verified',18) + ' ' + t('getVerifiedBiz') + '</button></div>'
+}
+function wgBizVerifStart() {
+  var fee = window.H.bizVerifFeeFor(S.country)
+  openSheet(t('verifBizTitle'),
+    '<div style="padding:16px 16px 24px">' +
+    '<div style="text-align:center;padding:12px 0 20px">' +
+      '<img src="' + window.BADGE_BLUE_PNG + '" style="width:64px;height:64px;margin:0 auto 14px;display:block">' +
+      '<p class="muted" style="font-size:13px;max-width:280px;margin:0 auto">' + t('verifBizSubtitle') + '</p>' +
+    '</div>' +
+    field(t('tinNumber'), '<input class="input" id="biz_tin" placeholder="e.g. 123-456-789">') +
+    '<div class="card" style="padding:14px;margin:16px 0;display:flex;justify-content:space-between;align-items:center;background:var(--bone-2);border:none"><span class="muted" style="font-size:13px">' + t('verifBizFee') + '</span><b style="font-size:18px;font-family:var(--display);color:var(--forest)">' + fee.label + '</b></div>' +
+    '<div id="bizverifer" style="color:var(--clay);font-size:13px;margin-bottom:10px"></div>' +
+    '<button class="btn btn-primary" data-act="wg-biz-verif-pay">' + ic('verified',16) + ' ' + t('payAndVerify') + '</button>' +
+    '</div>'
+  )
+}
+async function wgBizVerifPay() {
+  var errEl = document.getElementById('bizverifer'); if (errEl) errEl.textContent = ''
+  var tin = (document.getElementById('biz_tin') || {}).value || ''
+  tin = tin.trim()
+  if (!tin) { if (errEl) errEl.textContent = t('verifBizIncomplete'); return }
+  var fee = window.H.bizVerifFeeFor(S.country)
+  setSheetBody('<div class="center" style="padding:24px">' + spinner() + '</div>')
+  try {
+    var w = await getWalletBalance(S.profile.id)
+    if (w.available < fee.amount) {
+      setSheetBody('<div class="center" style="padding:24px">' + ic('wallet', 40) + '<h3 style="margin-top:12px">' + t('insufficientBalance') + '</h3><p class="muted" style="margin:8px 0 20px;font-size:13px">' + t('insufficientBalanceDesc').replace('{total}', money(fee.amount)).replace('{avail}', money(w.available)) + '</p><button class="btn btn-primary" data-act="buyer-wallet">' + t('topUp') + '</button><button class="btn btn-ghost" style="margin-top:8px" data-close>' + t('cancel') + '</button></div>')
+      return
+    }
+    var uid = S.profile.id
+    var tr = await sb.from('transactions').insert({ profile_id: uid, type: 'debit', amount: fee.amount, method: 'wallet', status: 'completed' })
+    if (tr.error) throw tr.error
+    // account_category/business_tin/verification_method are a newer addition — degrade
+    // gracefully if the migration hasn't run yet (unknown column fails the whole update).
+    var upd1 = await sb.from('profiles').update({ is_verified: true, verification_status: 'approved', business_tin: tin, verification_method: 'tin' }).eq('id', uid)
+    if (upd1.error) await sb.from('profiles').update({ is_verified: true, verification_status: 'approved' }).eq('id', uid)
+    S.profile.is_verified = true; S.profile.verification_status = 'approved'; S.profile.business_tin = tin
+    setSheetBody('<div class="center" style="padding:20px 8px"><img src="' + window.BADGE_BLUE_PNG + '" style="width:76px;height:76px;margin:0 auto 14px;display:block"><h3 style="font-size:20px;margin-bottom:6px">' + t('verifBizSuccess') + '</h3><p class="muted" style="font-size:14px">' + t('verifBizSuccessDesc') + '</p></div>')
+    setTimeout(function () { closeSheet(); buyerProfile() }, 1700)
+  } catch (e) { showErr(e.message) }
 }
 
 // ── Verification progress bar ──────────────────────────────────────────
