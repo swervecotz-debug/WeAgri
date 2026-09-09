@@ -2582,7 +2582,8 @@ async function loadDiscoverBody() {
 function wgOpenMarketMenu(el) {
   wgCloseMarketMenu()
   var html = '<button class="wg-mm-item" data-act="buyer-wallet">' + ic('wallet', 16) + '<span>' + t('wallet') + '</span></button>' +
-    '<button class="wg-mm-item" data-act="search-history">' + ic('clock', 16) + '<span>' + t('searchHistory') + '</span></button>'
+    '<button class="wg-mm-item" data-act="search-history">' + ic('clock', 16) + '<span>' + t('searchHistory') + '</span></button>' +
+    '<button class="wg-mm-item" data-act="open-adcenter">' + ic('boost', 16) + '<span>' + t('adCenterLink') + '</span></button>'
   var backdrop = document.createElement('div'); backdrop.className = 'wg-mm-backdrop'; backdrop.id = 'wg-mktmenu-backdrop'; backdrop.onclick = wgCloseMarketMenu
   var menu = document.createElement('div'); menu.className = 'wg-msgmenu'; menu.id = 'wg-mktmenu'; menu.innerHTML = html
   document.body.appendChild(backdrop); document.body.appendChild(menu)
@@ -3775,7 +3776,7 @@ document.addEventListener('click', function (e) {
     case 'msel-del': delMsgs(Object.keys(S._selset || {})); break
     case 'msg-edit': editMsg(id); break
     case 'msg-del': delMsgs([id]); break
-    case 'open-adcenter': openAdCenter(); break
+    case 'open-adcenter': wgCloseMarketMenu(); openAdCenter(); break
     // ── GAME CHANGER ──────────────────────────────────────────────────
     case 'wg-view-qr': ;(async function(oid){ var r = await sb.from('orders').select('*').eq('id',oid).maybeSingle(); if(r.data) wgShowQR(r.data) })(id); break
     case 'wg-print-qr': wgPrintQR(el.getAttribute('data-oid'), el.getAttribute('data-tid')); break
@@ -3831,8 +3832,12 @@ document.addEventListener('click', function (e) {
     case 'wg-priv-vis': wgPrivSelectVis(v); break
     case 'wg-ni-noop': break
     case 'wg-verif-s1': wgVerifS1(); break
-    case 'wg-biz-verif-start': wgBizVerifStart(); break
-    case 'wg-biz-verif-pay': wgBizVerifPay(); break
+    case 'wg-biz-verif-s1': wgBizVerifS1(); break
+    case 'wg-biz-vs2': wgBizVerifS2(); break
+    case 'wg-biz-vs3': wgBizVerifS2Continue(); break
+    case 'wg-biz-vs4': wgBizVerifS3Continue(); break
+    case 'wg-biz-vs5': wgBizVerifS5(); break
+    case 'wg-biz-verif-submit': wgBizVerifSubmit(); break
     case 'wg-idcam': wgStartIdCamera(el.getAttribute('data-field'), el.getAttribute('data-field') === 'front_id' ? t('frontIdTitle') : t('backIdTitle')); break
     case 'wg-vs2': wgVerifS2(); break
     case 'wg-vs3': wgVerifS2Continue(); break
@@ -5268,6 +5273,7 @@ function wgSubscribeMsgStatus(threadId) {
     verifB3:'Only your country of ID and verified status will be shown publicly. All other details are private.',
     verifyNow:'Start Verification', notNow:'Not now',
     selectCountry:'Select a country', countryDesc:"This is the country that issued your government ID (e.g. passport, driver's licence, national ID).",
+    countryDescBiz:'This is the country your business is registered in.',
     agreeTerms:"I agree to WeAgri's Terms of Use. I acknowledge that WeAgri will collect and use my personal information for identity verification.",
     agreeConsent:'I consent to WeAgri processing my biometric information (selfie photo) to verify my identity and for fraud prevention.',
     privacyNote:'Your facial geometry data is deleted immediately after processing. ID documents are retained for up to 30 days for review, then permanently deleted.',
@@ -5278,6 +5284,7 @@ function wgSubscribeMsgStatus(threadId) {
     backIdTitle:'Back of Government ID', backIdDesc:'Now take a clear photo of the BACK of your government ID.',
     takePhoto:'Take Photo', uploadFile:'Upload File',
     phoneTitle:'Your Phone Number', phoneDesc:'Enter the phone number linked to your farming business.',
+    phoneDescBiz:'Enter the phone number linked to your business.',
     certTitle:'Farmer Certificate', certDesc:'Upload your government-issued farming permit or certificate proving you are an authorised farmer.',
     certFormats:'Accepted: JPEG, PNG, PDF, DOC (no video files)',
     uploadCert:'Upload Certificate',
@@ -5297,7 +5304,7 @@ function wgSubscribeMsgStatus(threadId) {
     twoFaDisable:'Remove 2-Step Verification',
     twoFaSuccess:'2-Step Verification is now active!',
     twoFaRemoved:'2-Step Verification removed.',
-    verifSummary:'Review Your Documents',
+    verifSummary:'Review Your Documents', verifSummaryBiz:'Review Your Details',
     country:'Country', phone:'Phone', frontId:'Front ID', backId:'Back ID', farmerCert:'Farmer Certificate',
     almostDone:'Almost done!', almostDoneDesc:'Your documents are ready. Submit to complete your verification.',
     verifError:'Verification failed',
@@ -5327,6 +5334,7 @@ function wgSubscribeMsgStatus(threadId) {
     verifB3:'Nchi yako ya kitambulisho na hali ya uthibitisho tu ndizo zitaonekana hadharani.',
     verifyNow:'Anza Uthibitisho', notNow:'Baadaye',
     selectCountry:'Chagua nchi', countryDesc:'Hii ni nchi iliyotoa kitambulisho chako cha serikali.',
+    countryDescBiz:'Hii ni nchi ambayo biashara yako imesajiliwa.',
     agreeTerms:'Nakubali Masharti ya WeAgri na ukusanyaji wa habari zangu za kibinafsi kwa madhumuni ya uthibitisho.',
     agreeConsent:'Nakubali WeAgri kuchakata taarifa zangu za kibaolojia (selfie) kuthibitisha utambulisho wangu na kuzuia udanganyifu.',
     privacyNote:'Data ya uso yako inafutwa mara moja baada ya kuchakata. Vitambulisho huhifadhiwa kwa siku 30 kwa ukaguzi, kisha vinafutwa kabisa.',
@@ -5337,6 +5345,7 @@ function wgSubscribeMsgStatus(threadId) {
     backIdTitle:'Nyuma ya Kitambulisho', backIdDesc:'Sasa piga picha wazi ya NYUMA ya kitambulisho chako.',
     takePhoto:'Piga Picha', uploadFile:'Pakia Faili',
     phoneTitle:'Nambari Yako ya Simu', phoneDesc:'Ingiza nambari ya simu inayohusiana na shughuli zako za kilimo.',
+    phoneDescBiz:'Ingiza nambari ya simu inayohusiana na biashara yako.',
     certTitle:'Cheti cha Mkulima', certDesc:'Pakia cheti chako cha serikali kinachothibitisha una ruhusa ya kulima.',
     certFormats:'Miundo: JPEG, PNG, PDF, DOC (hakuna video)',
     uploadCert:'Pakia Cheti',
@@ -5356,7 +5365,7 @@ function wgSubscribeMsgStatus(threadId) {
     twoFaDisable:'Ondoa Uthibitisho wa Hatua Mbili',
     twoFaSuccess:'Uthibitisho wa Hatua Mbili sasa ume-washwa!',
     twoFaRemoved:'Uthibitisho wa Hatua Mbili umeondolewa.',
-    verifSummary:'Kagua Nyaraka Zako',
+    verifSummary:'Kagua Nyaraka Zako', verifSummaryBiz:'Kagua Taarifa Zako',
     country:'Nchi', phone:'Simu', frontId:'Mbele ya ID', backId:'Nyuma ya ID', farmerCert:'Cheti cha Mkulima',
     almostDone:'Karibu kumaliza!', almostDoneDesc:'Nyaraka zako ziko tayari. Wasilisha kukamilisha uthibitisho wako.',
     verifError:'Uthibitisho umeshindwa',
@@ -5450,28 +5459,123 @@ function wgBizVerifSection() {
       '<img src="' + window.BADGE_BLUE_PNG + '" style="width:38px;height:38px;flex-shrink:0">' +
       '<div style="flex:1"><b style="font-size:14px;color:var(--forest)">' + t('verifiedBusiness') + '</b><p class="muted" style="font-size:12px;margin-top:2px">' + t('verifBizDesc') + '</p></div></div>'
   }
-  return '<div style="margin-bottom:16px"><button class="wg-verif-btn" data-act="wg-biz-verif-start">' + ic('verified',18) + ' ' + t('getVerifiedBiz') + '</button></div>'
+  return '<div style="margin-bottom:16px"><button class="wg-verif-btn" data-act="wg-biz-verif-s1">' + ic('verified',18) + ' ' + t('getVerifiedBiz') + '</button></div>'
 }
-function wgBizVerifStart() {
-  var fee = window.H.bizVerifFeeFor(S.country)
+
+// ── Business-buyer verification WIZARD — mirrors the seller's step-by-step
+// KYC flow (wgVerifS1..S7) so both feel like the same product, but the
+// identity-proof steps (photograph government ID front & back) are replaced
+// with a single "Business TIN No." entry step. Ends the same way the old
+// single-sheet flow did: a wallet-balance check, then the fee is charged.
+var _wgBizVD = {}
+function wgBizVerifS1() {
+  _wgBizVD = {}
   openSheet(t('verifBizTitle'),
     '<div style="padding:16px 16px 24px">' +
+    _wgVP(1,5) +
     '<div style="text-align:center;padding:12px 0 20px">' +
       '<img src="' + window.BADGE_BLUE_PNG + '" style="width:64px;height:64px;margin:0 auto 14px;display:block">' +
-      '<p class="muted" style="font-size:13px;max-width:280px;margin:0 auto">' + t('verifBizSubtitle') + '</p>' +
+      '<h2 style="font-size:20px;margin:0 0 8px;color:var(--ink)">' + t('verifBizTitle') + '</h2>' +
+      '<p class="muted" style="font-size:13px;margin:0">' + t('verifBizSubtitle') + '</p>' +
     '</div>' +
-    field(t('tinNumber'), '<input class="input" id="biz_tin" placeholder="e.g. 123-456-789">') +
-    '<div class="card" style="padding:14px;margin:16px 0;display:flex;justify-content:space-between;align-items:center;background:var(--bone-2);border:none"><span class="muted" style="font-size:13px">' + t('verifBizFee') + '</span><b style="font-size:18px;font-family:var(--display);color:var(--forest)">' + fee.label + '</b></div>' +
-    '<div id="bizverifer" style="color:var(--clay);font-size:13px;margin-bottom:10px"></div>' +
-    '<button class="btn btn-primary" data-act="wg-biz-verif-pay">' + ic('verified',16) + ' ' + t('payAndVerify') + '</button>' +
+    '<button class="btn btn-primary" style="font-size:15px;font-weight:800" data-act="wg-biz-vs2">' + ic('shield',16) + ' ' + t('verifyNow') + '</button>' +
     '</div>'
   )
 }
-async function wgBizVerifPay() {
-  var errEl = document.getElementById('bizverifer'); if (errEl) errEl.textContent = ''
-  var tin = (document.getElementById('biz_tin') || {}).value || ''
+// ── STEP 2: Country + Consent (identical in spirit to the seller's step 2) ──
+function wgBizVerifS2() {
+  openSheet(t('selectCountry'),
+    '<div style="padding:16px 16px 24px">' +
+    _wgVP(2,5) +
+    '<h3 style="font-size:18px;margin-bottom:8px">' + t('selectCountry') + '</h3>' +
+    '<p class="muted" style="font-size:13px;margin-bottom:16px">' + t('countryDescBiz') + '</p>' +
+    '<select id="wg-bv-country" class="input" style="margin-bottom:22px">' +
+      '<option value="Tanzania" selected>Tanzania</option>' +
+      '<option value="Kenya">Kenya</option>' +
+      '<option value="Uganda">Uganda</option>' +
+      '<option value="Rwanda">Rwanda</option>' +
+      '<option value="Burundi">Burundi</option>' +
+      '<option value="DRC">DR Congo</option>' +
+      '<option value="Mozambique">Mozambique</option>' +
+      '<option value="Zambia">Zambia</option>' +
+      '<option value="Malawi">Malawi</option>' +
+    '</select>' +
+    '<label style="display:flex;gap:12px;align-items:flex-start;cursor:pointer;margin-bottom:20px">' +
+      '<input type="checkbox" id="wg-bvc1" style="width:22px;height:22px;margin-top:2px;accent-color:var(--forest);flex-shrink:0;border-radius:4px">' +
+      '<span style="font-size:13px;color:var(--ink);line-height:1.5">' + t('agreeTerms') + '</span>' +
+    '</label>' +
+    '<button class="btn btn-primary" data-act="wg-biz-vs3">' + t('continue') + '</button>' +
+    '</div>'
+  )
+}
+function wgBizVerifS2Continue() {
+  var c1 = document.getElementById('wg-bvc1')
+  if (!c1 || !c1.checked) { toast(t('agreeTermsFirst')); return }
+  _wgBizVD.country = (document.getElementById('wg-bv-country') || {}).value || 'Tanzania'
+  wgBizVerifS3()
+}
+// ── STEP 3: Business TIN No. (replaces the seller's front/back ID photo steps) ──
+function wgBizVerifS3() {
+  openSheet(t('tinNumber'),
+    '<div style="padding:16px 16px 24px">' +
+    _wgVP(3,5) +
+    '<h3 style="font-size:18px;margin-bottom:8px">' + t('tinNumber') + '</h3>' +
+    '<p class="muted" style="font-size:13px;margin-bottom:18px">' + t('verifBizSubtitle') + '</p>' +
+    '<input class="input" id="wg-bv-tin" placeholder="e.g. 123-456-789" value="' + esc(_wgBizVD.tin || '') + '" style="margin-bottom:24px">' +
+    '<button class="btn btn-primary" data-act="wg-biz-vs4">' + t('continue') + ' →</button>' +
+    '</div>'
+  )
+}
+function wgBizVerifS3Continue() {
+  var tin = (document.getElementById('wg-bv-tin') || {}).value || ''
   tin = tin.trim()
-  if (!tin) { if (errEl) errEl.textContent = t('verifBizIncomplete'); return }
+  if (!tin) { toast(t('verifBizIncomplete')); return }
+  _wgBizVD.tin = tin
+  wgBizVerifS4()
+}
+// ── STEP 4: Phone (same field the seller flow collects) ─────────────────
+function wgBizVerifS4() {
+  openSheet(t('phoneTitle'),
+    '<div style="padding:16px 16px 24px">' +
+    _wgVP(4,5) +
+    '<h3 style="font-size:18px;margin-bottom:8px">' + t('phoneTitle') + '</h3>' +
+    '<p class="muted" style="font-size:13px;margin-bottom:12px">' + t('phoneDescBiz') + '</p>' +
+    '<input type="tel" id="wg-bv-phone" class="input" placeholder="+255 7xx xxx xxx" value="' + esc(S.profile.phone || _wgBizVD.phone || '') + '" style="margin-bottom:24px">' +
+    '<button class="btn btn-primary" data-act="wg-biz-vs5">' + t('continue') + ' →</button>' +
+    '</div>'
+  )
+}
+// ── STEP 5: Review + the wallet-balance-checked fee payment ─────────────
+function wgBizVerifS5() {
+  var ph = (document.getElementById('wg-bv-phone') || {}).value || ''
+  if (ph) _wgBizVD.phone = ph
+  function row(label, val) {
+    return '<div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--border);font-size:13px">' +
+      '<span class="muted">' + esc(label) + '</span>' +
+      '<span style="font-weight:600;max-width:58%;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(val || '—') + '</span></div>'
+  }
+  var fee = window.H.bizVerifFeeFor(S.country)
+  openSheet(t('verifSummaryBiz'),
+    '<div style="padding:16px 16px 24px">' +
+    _wgVP(5,5) +
+    '<div style="text-align:center;margin-bottom:18px">' +
+      '<img src="' + window.BADGE_BLUE_PNG + '" style="width:64px;height:64px;margin:0 auto 12px;display:block">' +
+      '<h2 style="font-size:18px;margin-bottom:4px">' + t('almostDone') + '</h2>' +
+    '</div>' +
+    '<div class="card" style="padding:14px 16px;margin-bottom:14px">' +
+      row(t('country'), _wgBizVD.country || 'Tanzania') +
+      row(t('phone'), _wgBizVD.phone || S.profile.phone || '') +
+      row(t('tinNumber'), _wgBizVD.tin) +
+    '</div>' +
+    '<div class="card" style="padding:14px;margin-bottom:20px;display:flex;justify-content:space-between;align-items:center;background:var(--bone-2);border:none"><span class="muted" style="font-size:13px">' + t('verifBizFee') + '</span><b style="font-size:18px;font-family:var(--display);color:var(--forest)">' + fee.label + '</b></div>' +
+    '<div id="bizverifer" style="color:var(--clay);font-size:13px;margin-bottom:10px"></div>' +
+    '<button class="btn btn-primary" style="font-size:15px;font-weight:800;padding:16px" data-act="wg-biz-verif-submit">' + ic('shield',16) + ' ' + t('payAndVerify') + '</button>' +
+    '</div>'
+  )
+}
+async function wgBizVerifSubmit() {
+  var errEl = document.getElementById('bizverifer'); if (errEl) errEl.textContent = ''
+  if (!_wgBizVD.tin) { if (errEl) errEl.textContent = t('verifBizIncomplete'); return }
   var fee = window.H.bizVerifFeeFor(S.country)
   setSheetBody('<div class="center" style="padding:24px">' + spinner() + '</div>')
   try {
@@ -5485,9 +5589,9 @@ async function wgBizVerifPay() {
     if (tr.error) throw tr.error
     // account_category/business_tin/verification_method are a newer addition — degrade
     // gracefully if the migration hasn't run yet (unknown column fails the whole update).
-    var upd1 = await sb.from('profiles').update({ is_verified: true, verification_status: 'approved', business_tin: tin, verification_method: 'tin' }).eq('id', uid)
+    var upd1 = await sb.from('profiles').update({ is_verified: true, verification_status: 'approved', business_tin: _wgBizVD.tin, verification_method: 'tin' }).eq('id', uid)
     if (upd1.error) await sb.from('profiles').update({ is_verified: true, verification_status: 'approved' }).eq('id', uid)
-    S.profile.is_verified = true; S.profile.verification_status = 'approved'; S.profile.business_tin = tin
+    S.profile.is_verified = true; S.profile.verification_status = 'approved'; S.profile.business_tin = _wgBizVD.tin
     setSheetBody('<div class="center" style="padding:20px 8px"><img src="' + window.BADGE_BLUE_PNG + '" style="width:76px;height:76px;margin:0 auto 14px;display:block"><h3 style="font-size:20px;margin-bottom:6px">' + t('verifBizSuccess') + '</h3><p class="muted" style="font-size:14px">' + t('verifBizSuccessDesc') + '</p></div>')
     setTimeout(function () { closeSheet(); buyerProfile() }, 1700)
   } catch (e) { showErr(e.message) }
