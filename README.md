@@ -56,13 +56,16 @@ If you want to point the app at a different Supabase project, change
 
 ### Database
 
-This repo does not check in a schema — the database lives in Supabase. Any
-new column/table a feature needs is shipped as a plain `.sql` file for you
-to run once in the Supabase SQL editor (search the repo/chat history for
-`migration_*.sql` files). The app is written to degrade gracefully when a
-newer column doesn't exist yet (it retries with a smaller column set)
-rather than hard-failing, but running the migrations gets you the full
-feature (e.g. update videos, richer notification history).
+This repo does not check in a full schema — the database lives in
+Supabase. Any new column/table a feature needs is shipped as a plain
+`.sql` file under [`migrations/`](migrations/) for you to run once, in
+filename order, in the Supabase SQL editor (Dashboard → your project →
+SQL Editor → New query → paste → Run). Each file is written to be safe to
+re-run (`if not exists`, dynamic constraint lookup, etc.). The app is also
+written to degrade gracefully when a newer column doesn't exist yet (it
+retries with a smaller column set) rather than hard-failing, but running
+the migrations gets you the full feature (e.g. update videos, richer
+notification history).
 
 ## Key features
 
