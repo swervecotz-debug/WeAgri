@@ -816,7 +816,7 @@ function render() {
 async function logout() { S._busy = true; await sb.auth.signOut(); S._busy = false; S.session = null; S.profile = null; S.view = 'auth'; render() }
 
 /* ---------------- [ADMIN] ----------------
-   Admin logs in from the normal login screen (username "kelvin Jeremiah" typed
+   Admin logs in from the normal login screen (username "" typed
    into the phone field + the admin password — see authEmail()). Every number on
    these screens comes from Supabase via the admin_* RPC functions in
    supabase-admin-setup.sql, which check the caller is role='admin' before
@@ -2068,6 +2068,7 @@ async function sellerWallet() {
 }
 
 async function sellerProfile() {
+  if (!S.profile) return
   var v = document.getElementById('tabview')
   v.innerHTML = '<div class="page-pad fade-in"><div class="center" style="margin-bottom:18px">' + ownAvatarWithCamera(72) +
     '<h2 style="font-size:22px;margin-top:10px">' + esc(S.profile.full_name) + (typeof wgVerifBadge === 'function' ? wgVerifBadge(S.profile.is_verified ? 'approved' : S.profile.verification_status) : '') + '</h2><p class="muted" style="font-size:14px">' + esc(S.profile.region) + ' · ' + t(window.H.sellerTypeLabel(S.profile.seller_type)) + '</p></div>' +
@@ -2360,8 +2361,9 @@ function buyerDash() {
 
 var D = { query: '', type: 'all', cat: 'all' }
 async function buyerDiscover() {
+  if (!S.profile) return
   var v = document.getElementById('tabview')
-  v.innerHTML = '<div class="page-pad fade-in"><div style="display:flex;justify-content:space-between;align-items:center"><div><h2 style="font-size:24px;color:var(--forest)">' + t('discover') + '</h2><p class="muted" style="font-size:13px">' + t('nearbyFresh') + ' · ' + esc(S.profile.region) + '</p></div>' +
+  v.innerHTML = '<div class="page-pad fade-in"><div style="display:flex;justify-content:space-between;align-items:center"><div><h2 style="font-size:24px;color:var(--forest)">' + t('discover') + '</h2><p class="muted" style="font-size:13px">' + t('nearbyFresh') + ' · ' + esc(S.profile ? S.profile.region : '') + '</p></div>' +
     '<div style="display:flex;align-items:center;gap:2px">' +
     '<button data-act="tab" data-tab="alerts" style="position:relative;background:none;border:none;cursor:pointer;color:var(--forest);display:inline-flex;padding:4px">' + ic('bell', 22) + '</button>' +
     '<button data-act="market-menu" id="mkt-menu-btn" style="position:relative;background:none;border:none;cursor:pointer;color:var(--forest);display:inline-flex;padding:4px">' + ic('moreVert', 22) + '</button>' +
@@ -3463,6 +3465,7 @@ async function doSwitchAs(roleKey) {
   } catch (e) { showErr(e.message) }
 }
 async function buyerProfile() {
+  if (!S.profile) return
   var v = document.getElementById('tabview')
   var isDoctor = S.profile.role === 'doctor'
   var roleLabel = isDoctor ? t(window.H.sellerTypeLabel(S.profile.seller_type)) : t('buyer')
@@ -3509,6 +3512,7 @@ function switchRow(label, on, act, iconName) {
     '</button>'
 }
 function openSettings() {
+  if (!S.profile) return
   var regions = (window.REGIONS[S.country] || window.REGIONS.TZ).map(function (r) { return '<option' + (r === S.profile.region ? ' selected' : '') + '>' + esc(r) + '</option>' }).join('')
   var dark = document.documentElement.classList.contains('dark')
   var html =
