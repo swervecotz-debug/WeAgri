@@ -2282,7 +2282,7 @@ async function sellerWallet() {
     var tr = await sb.from('transactions').select('*').eq('profile_id', S.profile.id).order('created_at', { ascending: false }).limit(12)
     var txns = tr.data || []
     var _g_walletbody = document.getElementById('walletbody'); if (_g_walletbody) _g_walletbody.innerHTML =
-      '<div class="card" style="padding:22px;border:none;color:#fff;background:linear-gradient(135deg,var(--forest),var(--leaf));margin-bottom:16px"><p style="opacity:.85;font-size:13px">' + t('available') + '</p><div style="font-size:32px;font-weight:800;font-family:var(--display);margin:4px 0 12px">' + money(avail) + '</div><div style="font-size:13px;opacity:.9">' + t('processing') + ': ' + money(proc) + '</div><button class="btn btn-maize" style="margin-top:14px" data-act="withdraw">' + ic('arrowDown', 16) + ' ' + t('withdraw') + '</button></div>' +
+      '<div class="card" style="padding:22px;border:none;color:#fff;background:linear-gradient(135deg,var(--forest),var(--leaf));margin-bottom:16px"><p style="opacity:.85;font-size:13px">' + t('available') + '</p><div style="font-size:32px;font-weight:800;font-family:var(--display);margin:4px 0 12px">' + money(avail) + '</div><div style="font-size:13px;opacity:.9">' + t('processing') + ': ' + money(proc) + '</div><div style="display:flex;gap:10px;margin-top:14px"><button class="btn btn-maize" style="width:auto;flex:1;padding:12px" data-act="topup">' + ic('plus', 16) + ' ' + t('topUp') + '</button><button class="btn btn-ghost" style="width:auto;flex:1;padding:12px;background:rgba(255,255,255,.15);color:#fff;border-color:rgba(255,255,255,.35)" data-act="withdraw">' + ic('arrowDown', 16) + ' ' + t('withdraw') + '</button></div></div>' +
       '<h3 style="font-size:16px;margin-bottom:10px">History</h3>' +
       (txns.length ? txns.map(function (x) { return '<div class="card" style="padding:14px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center"><div><b style="text-transform:capitalize">' + esc(x.type) + '</b><div class="muted" style="font-size:12px">' + esc(x.method || '') + ' · ' + esc(x.status) + '</div></div><b style="color:' + (x.type === 'credit' ? 'var(--leaf)' : 'var(--clay)') + '">' + money(x.amount) + '</b></div>' }).join('') : empty('cash', '—'))
   } catch (e) { showErr(e.message) }
@@ -2504,7 +2504,8 @@ async function doTopUp() {
   var amt = Number(($('#w_amt') || {}).value); if (!amt) { toast(t('amount')); return }
   try {
     await sb.from('transactions').insert({ profile_id: S.profile.id, type: 'credit', amount: amt, method: S._wmethod, status: 'processing' })
-    closeSheet(); toast(t('saved')); buyerWallet()
+    closeSheet(); toast(t('saved'))
+    if (S.profile.role === 'buyer' || S.profile.role === 'doctor') buyerWallet(); else sellerWallet()
   } catch (e) { showErr(e.message) }
 }
 // Cancelling an order (setOrderStatus / wgDeclineOffer) can't credit the
