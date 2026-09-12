@@ -3144,6 +3144,11 @@ function openScanner() {
 }
 
 /* ---------------- [NOTIFICATIONS] ---------------- */
+// The name to attribute a chat message notification to. When the admin
+// sends one (the support-chat "WeAgri Service Provider" thread), the
+// buyer/seller must never see the admin's real name — same rule as the
+// broadcast/update notifications, applied here for regular 1:1 messages too.
+function wgMsgSenderName() { return S.profile.role === 'admin' ? t('serviceProvider') : S.profile.full_name }
 async function notify(recipientId, type, title, body, extra) {
   if (!recipientId || recipientId === S.profile.id) return
   try {
@@ -3448,7 +3453,7 @@ async function sendMsg() {
     if (ins.error) throw ins.error
     S._replyTo = null; renderReplyBar()
     wgEnsureChatRequest(other)
-    notify(other, 'message', S.profile.full_name, txt.slice(0, 60))
+    notify(other, 'message', wgMsgSenderName(), txt.slice(0, 60))
     loadThread()
   } catch (e) { showErr(e.message) }
 }
@@ -3475,7 +3480,7 @@ async function uploadVoice(blob) {
     if (up.error) throw up.error
     var url = sb.storage.from('product-photos').getPublicUrl(path).data.publicUrl
     await sb.from('messages').insert({ sender_id: S.profile.id, receiver_id: S._thread.id, body: t('voiceNote'), kind: 'voice', media_url: url })
-    notify(S._thread.id, 'message', S.profile.full_name, t('voiceNote'))
+    notify(S._thread.id, 'message', wgMsgSenderName(), t('voiceNote'))
     loadThread()
   } catch (e) { showErr(e.message) }
 }
@@ -3516,7 +3521,7 @@ async function wgSendImage(file) {
     var ins = await sb.from('messages').insert({ sender_id: S.profile.id, receiver_id: other, body: '', kind: 'image', media_url: url })
     if (ins.error) throw ins.error
     wgEnsureChatRequest(other)
-    notify(other, 'message', S.profile.full_name, t('photoLabel'))
+    notify(other, 'message', wgMsgSenderName(), t('photoLabel'))
     loadThread()
   } catch (e) { showErr(e.message) }
 }
@@ -3558,7 +3563,7 @@ async function doForward(toId) {
     if (S._fwd.kind === 'image') { row.body = ''; row.media_url = S._fwd.media } else { row.body = S._fwd.text || '' }
     var ins = await sb.from('messages').insert(row); if (ins.error) throw ins.error
     wgEnsureChatRequest(toId)
-    notify(toId, 'message', S.profile.full_name, S._fwd.kind === 'image' ? t('photoLabel') : (S._fwd.text || '').slice(0, 60))
+    notify(toId, 'message', wgMsgSenderName(), S._fwd.kind === 'image' ? t('photoLabel') : (S._fwd.text || '').slice(0, 60))
     closeSheet(); toast(t('saved'))
   } catch (e) { showErr(e.message) }
 }
@@ -5401,7 +5406,7 @@ async function _wgLoadNotifList(mode) {
     var r
     try {
       var q = sb.from('notifications')
-        .select('*, actor:profiles!notifications_actor_id_fkey(full_name)')
+        .select('*, actor:profiles!notifications_actor_id_fkey(full_name, role)')
         .eq('recipient_id', S.profile.id)
       q = mode === 'archive' ? q.eq('archived', true) : q.eq('archived', false)
       r = await q.order('created_at', { ascending: false }).limit(80)
@@ -5409,7 +5414,7 @@ async function _wgLoadNotifList(mode) {
     } catch (_archErr) {
       // archived column may not exist yet (SQL not run) — load without filter
       r = await sb.from('notifications')
-        .select('*, actor:profiles!notifications_actor_id_fkey(full_name)')
+        .select('*, actor:profiles!notifications_actor_id_fkey(full_name, role)')
         .eq('recipient_id', S.profile.id)
         .order('created_at', { ascending: false }).limit(80)
     }
@@ -5426,9 +5431,14 @@ async function _wgLoadNotifList(mode) {
     }
 
     box.innerHTML = rows.map(function(n) {
-      // Admin-sent broadcasts/updates are attributed to WeAgri itself, never to
-      // the admin's own name/initials — see wgSendBroadcast()/wgSendUpdate().
-      var isWgSystem = n.type === 'wg_broadcast' || n.type === 'wg_update'
+      // Admin-sent broadcasts/updates — and now admin-sent chat replies from
+      // the support thread — are attributed to WeAgri itself, never to the
+      // admin's own name/initials. wgMsgSenderName() already stores the right
+      // title going forward; the actor.role check here also covers any
+      // notification row stored before that fix existed.
+      var actorIsAdmin = !!(n.actor && n.actor.role === 'admin')
+      var isWgSystem = n.type === 'wg_broadcast' || n.type === 'wg_update' || (n.type === 'message' && actorIsAdmin)
+      var displayTitle = (n.type === 'message' && actorIsAdmin) ? t('serviceProvider') : (n.title || '')
       var actor = (n.actor && n.actor.full_name) || 'WeAgri'
       var inits = actor.split(' ').slice(0,2).map(function(w){ return (w[0]||'').toUpperCase() }).join('')
       var unread = !n.read && mode !== 'archive'
@@ -5466,7 +5476,7 @@ async function _wgLoadNotifList(mode) {
         '<div data-act="' + tapAct + '" data-nid="' + n.id + '" data-oid="' + (n.order_id || '') + '" data-video="' + esc(n.video_url || '') + '" style="display:flex;align-items:center;gap:12px;cursor:pointer">' +
           leftEl +
           '<div style="flex:1;min-width:0">' +
-            '<div style="font-size:14px;font-weight:' + (unread ? '700' : '500') + ';color:var(--ink);line-height:1.35">' + esc(n.title || '') + '</div>' +
+            '<div style="font-size:14px;font-weight:' + (unread ? '700' : '500') + ';color:var(--ink);line-height:1.35">' + esc(displayTitle) + '</div>' +
             (n.body ? '<div style="font-size:12px;color:var(--ink-soft);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(n.body) + '</div>' : '') +
             '<div style="font-size:11px;color:var(--ink-soft);margin-top:3px;display:flex;align-items:center;gap:6px">' + ago + (n.type === 'wg_update' && n.video_url ? '<span style="color:var(--forest);font-weight:700">' + ic('camera',11) + ' ' + t('watchVideo') + '</span>' : '') + '</div>' +
           '</div>' +
