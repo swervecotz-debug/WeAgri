@@ -2275,12 +2275,22 @@ async function sellerWallet() {
   var v = document.getElementById('tabview')
   v.innerHTML = '<div class="page-pad fade-in"><h2 style="font-size:24px;color:var(--forest);margin-bottom:14px">' + t('wallet') + '</h2><div id="walletbody">' + spinner() + '</div></div>'
   try {
+    await reconcileProcessingTxns(S.profile.id)
     var or = await sb.from('orders').select('total_price,status').eq('seller_id', S.profile.id)
     var orders = or.data || []
-    var avail = orders.filter(function (o) { return o.status === 'completed' }).reduce(function (s, o) { return s + Number(o.total_price || 0) }, 0)
+    var orderRevenue = orders.filter(function (o) { return o.status === 'completed' }).reduce(function (s, o) { return s + Number(o.total_price || 0) }, 0)
     var proc = orders.filter(function (o) { return o.status === 'accepted' }).reduce(function (s, o) { return s + Number(o.total_price || 0) }, 0)
-    var tr = await sb.from('transactions').select('*').eq('profile_id', S.profile.id).order('created_at', { ascending: false }).limit(12)
+    // limit(30) matches getWalletBalance()'s own window — this list now also
+    // feeds the "Available" sum below, not just the history display.
+    var tr = await sb.from('transactions').select('*').eq('profile_id', S.profile.id).order('created_at', { ascending: false }).limit(30)
     var txns = tr.data || []
+    // "Available" is completed order revenue PLUS whatever's moved through the
+    // wallet itself (mobile-money top-ups in, withdrawals/boost payments out)
+    // — without this, a completed top-up would never actually show up anywhere.
+    var completedTxns = txns.filter(function (x) { return x.status === 'completed' })
+    var walletIn = completedTxns.filter(function (x) { return x.type === 'credit' }).reduce(function (s, x) { return s + Number(x.amount || 0) }, 0)
+    var walletOut = completedTxns.filter(function (x) { return x.type === 'withdrawal' || x.type === 'debit' }).reduce(function (s, x) { return s + Number(x.amount || 0) }, 0)
+    var avail = orderRevenue + walletIn - walletOut
     var _g_walletbody = document.getElementById('walletbody'); if (_g_walletbody) _g_walletbody.innerHTML =
       '<div class="card" style="padding:22px;border:none;color:#fff;background:linear-gradient(135deg,var(--forest),var(--leaf));margin-bottom:16px"><p style="opacity:.85;font-size:13px">' + t('available') + '</p><div style="font-size:32px;font-weight:800;font-family:var(--display);margin:4px 0 12px">' + money(avail) + '</div><div style="font-size:13px;opacity:.9">' + t('processing') + ': ' + money(proc) + '</div><div style="display:flex;gap:10px;margin-top:14px"><button class="btn btn-maize" style="width:auto;flex:1;padding:12px" data-act="topup">' + ic('plus', 16) + ' ' + t('topUp') + '</button><button class="btn btn-ghost" style="width:auto;flex:1;padding:12px;background:rgba(255,255,255,.15);color:#fff;border-color:rgba(255,255,255,.35)" data-act="withdraw">' + ic('arrowDown', 16) + ' ' + t('withdraw') + '</button></div></div>' +
       '<h3 style="font-size:16px;margin-bottom:10px">History</h3>' +
@@ -2536,10 +2546,24 @@ async function reconcileRefunds(profileId) {
     if (toInsert.length) await sb.from('transactions').insert(toInsert)
   } catch (e) { /* best-effort — balance just shows pre-refund amount if this fails */ }
 }
+// There's no real mobile-money API behind top-ups/withdrawals yet, so both
+// are inserted as status 'processing' with nothing to ever move them along.
+// Simulate a payment gateway confirming the transaction: any 'processing'
+// transaction more than 2 minutes old gets marked 'completed' the next time
+// anyone's session checks a wallet balance — same self-healing, no-server-
+// timer-needed pattern reconcileRefunds() already uses just above.
+async function reconcileProcessingTxns(profileId) {
+  try {
+    var r = await sb.from('transactions').select('id, created_at').eq('profile_id', profileId).eq('status', 'processing')
+    var due = (r.data || []).filter(function (x) { return Date.now() - new Date(x.created_at).getTime() >= 120000 })
+    for (var i = 0; i < due.length; i++) { await sb.from('transactions').update({ status: 'completed' }).eq('id', due[i].id) }
+  } catch (e) { /* best-effort — it'll simply retry on the next balance check */ }
+}
 // Shared wallet-balance calc — used by the wallet screen itself and by
 // doBuy() to check a buyer can actually afford an order before placing it.
 async function getWalletBalance(profileId) {
   await reconcileRefunds(profileId)
+  await reconcileProcessingTxns(profileId)
   var tr = await sb.from('transactions').select('*').eq('profile_id', profileId).order('created_at', { ascending: false }).limit(30)
   var txns = tr.data || []
   var sum = function (list) { return list.reduce(function (s, x) { return s + Number(x.amount || 0) }, 0) }
