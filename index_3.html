@@ -666,6 +666,15 @@ window.H = {
   },
   qrPrefix: 'weagri://seller/',
   makeQrPayload(id) { return window.H.qrPrefix + id },
+  // Every order gets one of these the moment it's placed, so a delivery QR
+  // exists from the start instead of only appearing once a seller happens
+  // to accept it. crypto.randomUUID gives the best entropy where available;
+  // the fallback below is the same random+timestamp pattern already used
+  // for device ids elsewhere in this file.
+  genTrackingId() {
+    try { if (window.crypto && crypto.randomUUID) return crypto.randomUUID().replace(/-/g, '').slice(0, 12).toUpperCase() } catch (e) {}
+    return Math.random().toString(36).slice(2, 8).toUpperCase() + Date.now().toString(36).slice(-6).toUpperCase()
+  },
   parseQrPayload(text) {
     if (typeof text !== 'string') return null
     if (text.startsWith(window.H.qrPrefix)) return text.slice(window.H.qrPrefix.length)
@@ -2959,7 +2968,7 @@ async function doCompleteBuyerOrder() {
     // pickup) only exist once the matching SQL migration has been run —
     // fall all the way back to the original minimal insert so checkout
     // never breaks for buyers in the meantime, it just loses the new fields
-    var minimal = { buyer_id: S.profile.id, seller_id: p.seller_id, product_id: p.id, quantity: S._qty, total_price: total, status: 'pending', delivery_status: 'preparing' }
+    var minimal = { buyer_id: S.profile.id, seller_id: p.seller_id, product_id: p.id, quantity: S._qty, total_price: total, status: 'pending', delivery_status: 'preparing', tracking_id: window.H.genTrackingId() }
     var withDelivery = Object.assign({}, minimal, {
       dropoff_region: doRegion, dropoff_district: doDistrict || null,
       receiver_first_name: fname, receiver_middle_name: mname, receiver_last_name: lname, receiver_phone: rphone,
@@ -2970,6 +2979,9 @@ async function doCompleteBuyerOrder() {
     if (ins.error) ins = await sb.from('orders').insert(withDelivery)
     if (ins.error) ins = await sb.from('orders').insert(Object.assign({}, minimal, geo))
     if (ins.error) ins = await sb.from('orders').insert(minimal)
+    // last-resort fallback: tracking_id itself hasn't been migrated in yet on
+    // this database — drop it too rather than block checkout entirely.
+    if (ins.error) { var minimalNoTrk = Object.assign({}, minimal); delete minimalNoTrk.tracking_id; ins = await sb.from('orders').insert(minimalNoTrk) }
     if (ins.error) throw ins.error
     // deduct the order total from the buyer's WeAgri wallet now that the order is placed
     await sb.from('transactions').insert({ profile_id: S.profile.id, type: 'debit', amount: total, method: 'wallet', status: 'completed' })
@@ -3041,7 +3053,10 @@ async function doSendOffer() {
     return
   }
   try {
-    var ins = await sb.from('orders').insert({ buyer_id: S.profile.id, seller_id: p.seller_id, product_id: p.id, quantity: S._qty, total_price: total, status: 'pending', delivery_status: 'preparing' })
+    var offerRow = { buyer_id: S.profile.id, seller_id: p.seller_id, product_id: p.id, quantity: S._qty, total_price: total, status: 'pending', delivery_status: 'preparing', tracking_id: window.H.genTrackingId() }
+    var ins = await sb.from('orders').insert(offerRow)
+    // last-resort fallback: tracking_id itself hasn't been migrated in yet on this database
+    if (ins.error) { var offerRowNoTrk = Object.assign({}, offerRow); delete offerRowNoTrk.tracking_id; ins = await sb.from('orders').insert(offerRowNoTrk) }
     if (ins.error) throw ins.error
     // hold the offer amount in the buyer's wallet now — refunded automatically if the seller declines (see wgDeclineOffer)
     await sb.from('transactions').insert({ profile_id: S.profile.id, type: 'debit', amount: total, method: 'wallet', status: 'completed' })
