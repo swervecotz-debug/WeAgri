@@ -54,6 +54,32 @@ The Supabase URL and anon key are already set in `window.CFG` at the top of
 If you want to point the app at a different Supabase project, change
 `SUPABASE_URL` / `SUPABASE_ANON_KEY` there.
 
+## Deploying (Netlify)
+
+This repo is set up to deploy straight from GitHub with **no build step**:
+
+1. In Netlify: **Add new site → Import an existing project** → pick this
+   GitHub repo.
+2. Leave the build command empty and the publish directory as `.` (repo
+   root) — [`netlify.toml`](netlify.toml) already pins both of these, so
+   Netlify won't try to guess a build command from `package.json` (there
+   isn't one — an earlier, abandoned Node/Express rewrite used to leave one
+   here, which is exactly what caused a 404 at `/` before: Netlify was
+   trying to publish a different, empty scaffold folder instead of the
+   real app).
+3. Deploy. `netlify.toml` redirects `/` (and any other path) to
+   `/index_3.html` with a 200 rewrite, so the app loads at the site's root
+   URL while the browser's address bar stays clean.
+4. To get the `weagri.netlify.app` address specifically: **Site
+   configuration → General → Site details → Change site name** → set it to
+   `weagri`. (Site names are first-come-first-served across all of
+   Netlify, not per-account — if it's taken, Netlify will tell you.)
+
+No Render, no server process, no environment variables to configure on
+Netlify's side — the Supabase URL/anon key are already in `window.CFG`
+inside `index_3.html` (see **Running it** above for why that's fine to
+commit).
+
 ### Database
 
 This repo does not check in a full schema — the database lives in
@@ -145,7 +171,13 @@ it came from "WeAgri" as a brand rather than from a person.
 
 ```
 index_3.html     the app (see above)
-*.png            a few image assets referenced by index_3.html
+netlify.toml     Netlify build/publish + redirect config (see Deploying)
+favicon.png      icon-only WeAgri mark — browser tab icon, no build step needed
+og-image.png     social-share preview image (link unfurls on WhatsApp/etc.)
+robots.txt       allows crawling, points at sitemap.xml
+sitemap.xml      single-entry sitemap for the site root
+migrations/      SQL migrations to run once in the Supabase SQL editor
+*.png            a few other image assets referenced by index_3.html
 ```
 
 Everything else needed to run WeAgri lives in Supabase (database, auth,
